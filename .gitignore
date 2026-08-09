@@ -1,0 +1,43 @@
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Local coverage output
+.coverage
+htmlcov/
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*.tmp
+*.bak
+
+# Generated logs and compiled MetaTrader binaries
+*.log
+*.ex4
+*.ex5
+
+# Future execution and research data
+/runs/
+/artifacts/
+/datasets/
+/results/
+/telemetry/
+/reports/
+/logs/
+/data/

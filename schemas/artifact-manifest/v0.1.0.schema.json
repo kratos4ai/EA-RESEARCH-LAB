@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:artifact-manifest:0.1.0",
+  "title": "Artifact Manifest 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "artifact_id",
+    "logical_name",
+    "artifact_version",
+    "build_record_id",
+    "source_revision",
+    "binary_digest",
+    "compiler",
+    "built_at"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "artifact-manifest"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "artifact_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/artifact_id"
+    },
+    "logical_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "artifact_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "build_record_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/build_record_id"
+    },
+    "source_revision": {
+      "$ref": "urn:ea-research-lab:schema:build-record:0.1.0#/$defs/source_revision"
+    },
+    "binary_digest": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+    },
+    "compiler": {
+      "$ref": "#/$defs/namespaced_payload"
+    },
+    "built_at": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/utc_timestamp"
+    }
+  },
+  "$defs": {
+    "namespaced_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["namespace", "schema_ref", "value"],
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_ref": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+        },
+        "value": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

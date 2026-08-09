@@ -1,0 +1,21 @@
+{
+  "schema_name": "test-definition",
+  "schema_version": "0.1.0",
+  "test_definition_id": "testdef_0195395c-7c9e-7c23-ae4d-8f6a0b3c4d5e",
+  "test_definition_revision_id": "testrev_0195395c-7c9e-7d34-bf5e-9a7b1c3d5e6f",
+  "artifact_id": "artifact_0195395c-7c9e-7b12-9d3c-7e5f9a2b3c4d",
+  "execution_configuration": {
+    "schema_ref": "urn:ea-research-lab:schema:example-execution-configuration:0.1.0",
+    "value": {
+      "provider_owned_option": {
+        "nested": true
+      }
+    }
+  },
+  "sut_inputs": {
+    "schema_ref": "urn:ea-research-lab:schema:example-sut-inputs:0.1.0",
+    "value": {
+      "sut_owned_parameter": 42
+    }
+  }
+}

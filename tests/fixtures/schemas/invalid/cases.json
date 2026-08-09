@@ -1,0 +1,73 @@
+[
+  {
+    "name": "invalid entity identifier",
+    "base": "artifact-manifest.json",
+    "operation": "replace",
+    "path": ["artifact_id"],
+    "value": "artifact_not-a-uuidv7",
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.artifact_id"
+  },
+  {
+    "name": "invalid content digest",
+    "base": "artifact-manifest.json",
+    "operation": "replace",
+    "path": ["binary_digest"],
+    "value": "not-a-sha256-digest",
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.binary_digest"
+  },
+  {
+    "name": "invalid date-time format",
+    "base": "run-manifest.json",
+    "operation": "replace",
+    "path": ["created_at"],
+    "value": "2026-02-30T12:01:00Z",
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.created_at"
+  },
+  {
+    "name": "invalid schema reference",
+    "base": "telemetry-envelope.json",
+    "operation": "replace",
+    "path": ["payload_schema"],
+    "value": "not a uri",
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.payload_schema"
+  },
+  {
+    "name": "unsupported exact version",
+    "base": "run-manifest.json",
+    "operation": "replace",
+    "path": ["schema_version"],
+    "value": "0.2.0",
+    "expected_code": "unsupported_schema",
+    "expected_path": "$.schema_version"
+  },
+  {
+    "name": "unexpected core property",
+    "base": "telemetry-envelope.json",
+    "operation": "add",
+    "path": ["strategy_name"],
+    "value": "must-not-be-core-vocabulary",
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$"
+  },
+  {
+    "name": "broken provenance shape",
+    "base": "analysis-result.json",
+    "operation": "remove",
+    "path": ["provenance", "analysis_definition_id"],
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.provenance.analysis_definition_id"
+  },
+  {
+    "name": "limited reproducibility without reasons",
+    "base": "run-manifest.json",
+    "operation": "replace",
+    "path": ["execution_reproducibility", "level"],
+    "value": "best_effort",
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.execution_reproducibility.reasons"
+  }
+]

@@ -11,5 +11,7 @@ Dataset identity must include:
 - transformation version
 - transformation parameters where applicable
 - creation timestamp
-- schema version
+- exact dataset-content schema reference
 - provenance
+
+The Dataset Manifest records these provenance links directly. It does not define storage layout or analytical formulas.

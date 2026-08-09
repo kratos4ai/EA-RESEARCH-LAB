@@ -1,0 +1,23 @@
+{
+  "schema_name": "artifact-manifest",
+  "schema_version": "0.1.0",
+  "artifact_id": "artifact_0195395c-7c9e-7b12-9d3c-7e5f9a2b3c4d",
+  "logical_name": "example-sut",
+  "artifact_version": "build-1",
+  "build_record_id": "build_0195395c-7c9e-7a91-8c2b-6d4f8e1a2b3c",
+  "source_revision": {
+    "vcs_kind": "git",
+    "repository": "ea-research-lab",
+    "revision": "786698b54b782595a97a3f76ab7b8ce66ad80ee9",
+    "is_dirty": false
+  },
+  "binary_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "compiler": {
+    "namespace": "example.compiler",
+    "schema_ref": "urn:ea-research-lab:schema:example-compiler:0.1.0",
+    "value": {
+      "identity": "opaque"
+    }
+  },
+  "built_at": "2026-08-09T12:00:00Z"
+}

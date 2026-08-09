@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:telemetry-envelope:0.1.0",
+  "title": "Telemetry Envelope 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "run_id",
+    "stream_id",
+    "sequence",
+    "timestamp",
+    "producer_namespace",
+    "event_type",
+    "payload_schema",
+    "payload"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "telemetry-envelope"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "run_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/run_id"
+    },
+    "stream_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/utc_timestamp"
+    },
+    "producer_namespace": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "payload_schema": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

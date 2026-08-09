@@ -1,6 +1,6 @@
 # Phase 01 — Foundation Execution Plan
 
-- Status: Approved with adjustments; awaiting final authorization to begin M0
+- Status: In progress — M0 through M4 closed; M5 not started
 - Scope: Phase 01 only
 - Implementation authorization: Not granted by this document
 
@@ -777,6 +777,8 @@ Represent every canonical provenance link and raw-evidence immutability rule as 
 - analytical computation.
 
 ### M4 — Schema consolidation and validation
+
+- Milestone status: Completed and approved
 
 #### Objective
 

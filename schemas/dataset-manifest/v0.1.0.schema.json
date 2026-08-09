@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:dataset-manifest:0.1.0",
+  "title": "Dataset Manifest 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "dataset_id",
+    "input_manifests",
+    "input_datasets",
+    "transformation_id",
+    "transformation_version",
+    "created_at",
+    "dataset_schema"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "dataset-manifest"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "dataset_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/dataset_id"
+    },
+    "input_manifests": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:ea-research-lab:schema:raw-evidence-manifest:0.1.0#/$defs/manifest_ref"
+      },
+      "uniqueItems": true
+    },
+    "input_datasets": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/dataset_id"
+      },
+      "uniqueItems": true
+    },
+    "transformation_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/transformation_id"
+    },
+    "transformation_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "transformation_parameters": {
+      "$ref": "#/$defs/schema_referenced_payload"
+    },
+    "created_at": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/utc_timestamp"
+    },
+    "dataset_schema": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+    }
+  },
+  "anyOf": [
+    {
+      "properties": {
+        "input_manifests": {
+          "minItems": 1
+        }
+      }
+    },
+    {
+      "properties": {
+        "input_datasets": {
+          "minItems": 1
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "schema_referenced_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_ref", "value"],
+      "properties": {
+        "schema_ref": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+        },
+        "value": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

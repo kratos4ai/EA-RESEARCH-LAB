@@ -1,0 +1,27 @@
+{
+  "schema_name": "run-manifest",
+  "schema_version": "0.1.0",
+  "run_id": "run_0195395c-7c9e-7f56-9b70-2c4d6e8f0a12",
+  "test_definition_revision_id": "testrev_0195395c-7c9e-7d34-bf5e-9a7b1c3d5e6f",
+  "artifact_id": "artifact_0195395c-7c9e-7b12-9d3c-7e5f9a2b3c4d",
+  "environment_configuration_id": "envcfg_0195395c-7c9e-7e45-8a6f-1b3c5d7e9f01",
+  "environment_configuration": {
+    "schema_ref": "urn:ea-research-lab:schema:example-execution-environment:0.1.0",
+    "value": {
+      "provider_owned_environment": "opaque"
+    }
+  },
+  "status": "completed",
+  "created_at": "2026-08-09T12:01:00Z",
+  "started_at": "2026-08-09T12:02:00Z",
+  "finished_at": "2026-08-09T12:03:00Z",
+  "execution_reproducibility": {
+    "level": "equivalent",
+    "reasons": []
+  },
+  "raw_evidence_manifest": {
+    "manifest_id": "rawmanifest_0195395c-7c9e-7056-8a71-3d5e7f9a1b23",
+    "run_id": "run_0195395c-7c9e-7f56-9b70-2c4d6e8f0a12",
+    "content_digest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  }
+}

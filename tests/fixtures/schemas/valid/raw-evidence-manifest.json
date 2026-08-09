@@ -1,0 +1,23 @@
+{
+  "schema_name": "raw-evidence-manifest",
+  "schema_version": "0.1.0",
+  "manifest_id": "rawmanifest_0195395c-7c9e-7056-8a71-3d5e7f9a1b23",
+  "run_id": "run_0195395c-7c9e-7f56-9b70-2c4d6e8f0a12",
+  "objects": [
+    {
+      "object_id": "rawobj_0195395c-7c9e-7167-9b82-4e6f8a0b2c34",
+      "media_type": "application/json",
+      "byte_length": 128,
+      "content_digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "payload_schema": "urn:ea-research-lab:schema:example-raw-payload:0.1.0",
+      "provider_namespace": "example.provider"
+    }
+  ],
+  "sealed_at": "2026-08-09T12:04:00Z",
+  "outcome": "completed",
+  "prior_manifest": {
+    "manifest_id": "rawmanifest_0195395c-7c9e-7067-9b82-4e6f8a0b2c34",
+    "run_id": "run_0195395c-7c9e-7f56-9b70-2c4d6e8f0a12",
+    "content_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema_name": "analysis-result",
+  "schema_version": "0.1.0",
+  "analysis_result_id": "analysisresult_0195395c-7c9e-749a-8eb5-7b9c1d3e5f67",
+  "created_at": "2026-08-09T12:06:00Z",
+  "provenance": {
+    "input_dataset_ids": [
+      "dataset_0195395c-7c9e-7389-bda4-6a8b0c2d4e56"
+    ],
+    "analysis_definition_id": "analysisdef_0195395c-7c9e-74ab-9fc6-8c0d2e4f6a78",
+    "analysis_version": "summary-1",
+    "analysis_parameters": {
+      "schema_ref": "urn:ea-research-lab:schema:example-analysis-parameters:0.1.0",
+      "value": {
+        "parameter": "opaque"
+      }
+    },
+    "computation_environment_id": "envcfg_0195395c-7c9e-7e45-8a6f-1b3c5d7e9f01"
+  },
+  "result_schema": "urn:ea-research-lab:schema:example-analysis-output:0.1.0",
+  "result": {
+    "provider_neutral_output": 1
+  }
+}

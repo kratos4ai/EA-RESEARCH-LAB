@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:test-definition:0.1.0",
+  "title": "Test Definition 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "test_definition_id",
+    "test_definition_revision_id",
+    "artifact_id",
+    "execution_configuration",
+    "sut_inputs"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "test-definition"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "test_definition_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/test_definition_id"
+    },
+    "test_definition_revision_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/test_definition_revision_id"
+    },
+    "artifact_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/artifact_id"
+    },
+    "execution_configuration": {
+      "$ref": "#/$defs/schema_referenced_payload"
+    },
+    "sut_inputs": {
+      "$ref": "#/$defs/schema_referenced_payload"
+    }
+  },
+  "$defs": {
+    "schema_referenced_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_ref", "value"],
+      "properties": {
+        "schema_ref": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+        },
+        "value": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

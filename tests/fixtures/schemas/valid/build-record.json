@@ -1,0 +1,20 @@
+{
+  "schema_name": "build-record",
+  "schema_version": "0.1.0",
+  "build_record_id": "build_0195395c-7c9e-7a91-8c2b-6d4f8e1a2b3c",
+  "source_revision": {
+    "vcs_kind": "git",
+    "repository": "ea-research-lab",
+    "revision": "786698b54b782595a97a3f76ab7b8ce66ad80ee9",
+    "is_dirty": false
+  },
+  "build_configuration_id": "envcfg_0195395c-7c9e-7e45-8a6f-1b3c5d7e9f01",
+  "build_configuration": {
+    "schema_ref": "urn:ea-research-lab:schema:example-build-configuration:0.1.0",
+    "value": {
+      "provider_owned_option": "opaque"
+    }
+  },
+  "status": "succeeded",
+  "artifact_id": "artifact_0195395c-7c9e-7b12-9d3c-7e5f9a2b3c4d"
+}

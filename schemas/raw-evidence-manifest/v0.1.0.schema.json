@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:raw-evidence-manifest:0.1.0",
+  "title": "Raw Evidence Manifest 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "manifest_id",
+    "run_id",
+    "objects",
+    "sealed_at",
+    "outcome"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "raw-evidence-manifest"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "manifest_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/raw_evidence_manifest_id"
+    },
+    "run_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/run_id"
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/evidence_object"
+      },
+      "uniqueItems": true
+    },
+    "sealed_at": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/utc_timestamp"
+    },
+    "outcome": {
+      "enum": ["completed", "failed", "cancelled", "collection_failed"]
+    },
+    "prior_manifest": {
+      "$ref": "#/$defs/manifest_ref"
+    }
+  },
+  "$defs": {
+    "evidence_object": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_id", "media_type", "byte_length", "content_digest"],
+      "properties": {
+        "object_id": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/raw_evidence_object_id"
+        },
+        "media_type": {
+          "type": "string",
+          "pattern": "^[^/\\s]+/[^/\\s]+$"
+        },
+        "byte_length": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content_digest": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        },
+        "payload_schema": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+        },
+        "provider_namespace": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "manifest_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest_id", "run_id", "content_digest"],
+      "properties": {
+        "manifest_id": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/raw_evidence_manifest_id"
+        },
+        "run_id": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/run_id"
+        },
+        "content_digest": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        }
+      }
+    }
+  }
+}

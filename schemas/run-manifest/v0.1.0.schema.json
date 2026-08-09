@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:run-manifest:0.1.0",
+  "title": "Run Manifest 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "run_id",
+    "test_definition_revision_id",
+    "artifact_id",
+    "environment_configuration_id",
+    "environment_configuration",
+    "status",
+    "created_at",
+    "execution_reproducibility"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "run-manifest"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "run_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/run_id"
+    },
+    "test_definition_revision_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/test_definition_revision_id"
+    },
+    "artifact_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/artifact_id"
+    },
+    "environment_configuration_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/environment_configuration_id"
+    },
+    "environment_configuration": {
+      "$ref": "#/$defs/schema_referenced_payload"
+    },
+    "status": {
+      "description": "Execution lifecycle only; evidence collection, persistence, and analysis have independent lifecycles.",
+      "enum": ["created", "running", "completed", "failed", "cancelled"]
+    },
+    "created_at": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/utc_timestamp"
+    },
+    "started_at": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/utc_timestamp"
+    },
+    "finished_at": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/utc_timestamp"
+    },
+    "execution_reproducibility": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/reproducibility_assessment"
+    },
+    "raw_evidence_manifest": {
+      "$ref": "urn:ea-research-lab:schema:raw-evidence-manifest:0.1.0#/$defs/manifest_ref"
+    }
+  },
+  "$defs": {
+    "schema_referenced_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_ref", "value"],
+      "properties": {
+        "schema_ref": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+        },
+        "value": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}

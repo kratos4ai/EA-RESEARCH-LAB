@@ -3,6 +3,7 @@
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from enum import StrEnum
 from typing import Self
 
 from ea_research_lab.domain.errors import InvalidValueError
@@ -17,6 +18,7 @@ _SCHEMA_NAME_PATTERN = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
 _SCHEMA_VERSION_PATTERN = re.compile(
     r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
 )
+_REASON_CODE_PATTERN = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
 _SCHEMA_URN_PREFIX = "urn:ea-research-lab:schema:"
 
 
@@ -170,3 +172,57 @@ class SourceRevision:
         _require_clean_text(self.revision, "Source revision")
         if type(self.is_dirty) is not bool:
             raise InvalidValueError("Source dirty state must be a boolean.")
+
+
+class ReproducibilityLevel(StrEnum):
+    EXACT = "exact"
+    EQUIVALENT = "equivalent"
+    BEST_EFFORT = "best_effort"
+    UNAVAILABLE = "unavailable"
+
+
+@dataclass(frozen=True, slots=True)
+class ReproducibilityReason:
+    code: str
+    detail: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.code, str) or not _REASON_CODE_PATTERN.fullmatch(
+            self.code
+        ):
+            raise InvalidValueError(
+                "Reproducibility reason code must use lowercase snake_case."
+            )
+        _require_clean_text(self.detail, "Reproducibility reason detail")
+
+
+@dataclass(frozen=True, slots=True)
+class ReproducibilityAssessment:
+    """An explicit recorded assessment; no level is inferred from inputs."""
+
+    level: ReproducibilityLevel
+    reasons: tuple[ReproducibilityReason, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.level, ReproducibilityLevel):
+            raise InvalidValueError(
+                "Reproducibility level must be a ReproducibilityLevel."
+            )
+        try:
+            reasons = tuple(self.reasons)
+        except TypeError as error:
+            raise InvalidValueError(
+                "Reproducibility reasons must be an ordered collection."
+            ) from error
+        if any(not isinstance(reason, ReproducibilityReason) for reason in reasons):
+            raise InvalidValueError(
+                "Reproducibility reasons must contain ReproducibilityReason values."
+            )
+        if self.level in {
+            ReproducibilityLevel.BEST_EFFORT,
+            ReproducibilityLevel.UNAVAILABLE,
+        } and not reasons:
+            raise InvalidValueError(
+                f"{self.level.value} reproducibility requires at least one reason."
+            )
+        object.__setattr__(self, "reasons", reasons)

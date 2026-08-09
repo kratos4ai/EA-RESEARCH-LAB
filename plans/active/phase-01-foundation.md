@@ -1,5 +1,7 @@
 # Phase 01 — Foundation
 
+- Status: Completed
+
 ## Objective
 
 Create the minimum architectural foundation required for later build, execution, analytics, visual, and MCP capabilities without prematurely implementing those capabilities.
@@ -35,11 +37,15 @@ These may begin as interfaces/data structures/contracts rather than complete ser
 
 ## Required schemas
 
-Initial versioned schemas:
+Phase 01 versioned contracts:
 
+- Common values
+- Build Record
 - Artifact Manifest
-- Run Manifest
 - Test Definition
+- Run Manifest
+- Raw Evidence Manifest
+- Dataset Manifest
 - Telemetry Envelope
 - Analysis Result
 
@@ -68,31 +74,9 @@ Do not implement:
 - raw evidence is modeled as immutable;
 - analysis outputs carry analysis version and provenance.
 
-## Suggested milestones
+## Approved milestone execution
 
-### M1 — Repository skeleton
-
-Create module/package boundaries and testing foundation.
-
-### M2 — Core identifiers and value objects
-
-Define opaque IDs and common metadata.
-
-### M3 — Schema contracts
-
-Implement initial schemas and validation tests.
-
-### M4 — Provenance model
-
-Define traceability relationships between source, artifact, run, dataset, and analysis.
-
-### M5 — Quality gates
-
-Automated checks for formatting, typing/linting where applicable, tests, and schema validation.
-
-### M6 — Documentation review
-
-Ensure implementation matches ADRs and architecture documentation.
+The authoritative milestone sequence, scope, and status are maintained in `plans/active/phase-01-execution-plan.md`. This foundation brief does not redefine that approved execution plan.
 
 ## Acceptance criteria
 

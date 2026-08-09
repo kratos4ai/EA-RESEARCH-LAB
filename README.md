@@ -15,6 +15,12 @@ Its purpose is to provide a reproducible environment for:
 
 The platform treats every Expert Advisor as a **System Under Test (SUT)**.
 
+## Current implementation status
+
+The repository currently contains the Phase 01 foundation: typed domain values, immutable provenance and evidence models, exact versioned schemas with local validation, transport-neutral request context, minimal configuration, structured operational logging, and automated architecture checks.
+
+BuildProvider, ExecutionProvider, MetaTrader/MetaEditor integration, persistence, analytical computation, Platform API runtime, UI, and MCP remain later-phase work. Phase 01 is complete.
+
 ## Core principle
 
 The platform understands:
@@ -33,3 +39,5 @@ The platform does **not** understand:
 4. `docs/roadmap/target-state.md`
 5. `docs/roadmap/phases.md`
 6. `plans/active/phase-01-foundation.md`
+7. `plans/active/phase-01-execution-plan.md`
+8. `docs/development.md`

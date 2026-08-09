@@ -1,6 +1,6 @@
 # Phase 01 — Foundation Execution Plan
 
-- Status: In progress — M0 through M5 closed; M6 not started
+- Status: Completed
 - Scope: Phase 01 only
 - Implementation authorization: Not granted by this document
 
@@ -26,16 +26,9 @@ Phase 01 produces domain primitives, stable identifier and value conventions, ca
 - No empty packages, interfaces, factories, repositories, services, or adapters are created solely for later phases.
 - Repository artifacts, identifiers, errors, schemas, tests, and documentation remain in English.
 
-## 3. Observed repository state
+## 3. Repository baseline
 
-The workspace contains Git metadata, but the repository has no commits. The current branch is `master`, and all current files are untracked.
-
-Therefore:
-
-- `git init` is already satisfied in this workspace and must not be repeated;
-- the initial baseline commit is still required before Phase 01 implementation;
-- a portable implementation checklist may retain `git init -b main` as a conditional step for a fresh checkout with no `.git` directory;
-- no Git initialization, branch rename, staging, or commit is performed while this plan is being prepared.
+M0 established the reviewed Git baseline on `main` before implementation. M1 through M6 are closed through milestone checkpoint commits.
 
 ## 4. Minimal technical baseline
 
@@ -43,7 +36,7 @@ Therefore:
 
 Use Python 3.14. Python 3.14 provides the required standard-library facilities: frozen dataclasses, enums, `uuid.uuid7()` generation, UTC-aware datetimes, JSON parsing, logging, environment access, `unittest`, `ast`, `compileall`, `venv`, and hashing.
 
-Python 3.14 is not currently installed in the observed workspace, which exposes Python 3.12.10. Installing and verifying Python 3.14 is an M1 toolchain prerequisite and must not occur before M0 authorization and completion.
+M1 verified the project environment with Python 3.14.7 and standard-library `uuid.uuid7()`. The supported runtime range remains `>=3.14,<3.15`.
 
 Do not introduce an asynchronous runtime, web framework, ORM, dataframe library, dependency-injection framework, or plugin framework in Phase 01.
 
@@ -900,6 +893,8 @@ Make the Phase 01 package operable and diagnosable without introducing a runtime
 
 ### M6 — Architecture enforcement and Phase 01 closure
 
+- Milestone status: Completed
+
 #### Objective
 
 Verify that Phase 01 establishes stable boundaries and nothing from a later phase has been implemented accidentally.
@@ -1000,17 +995,23 @@ Risk: pinning only direct dependencies allows transitive drift.
 
 Mitigation: create the lock from a clean virtual environment and verify installation from that lock.
 
-### Python 3.14 is not installed in the current workspace
+### Python 3.14 baseline portability
 
-Risk: M1 cannot create or validate the approved environment until the Python 3.14 toolchain is available.
+Risk: contributors may invoke the repository with an unsupported Python version or without standard-library `uuid.uuid7()`.
 
-Mitigation: after M0, install an approved Python 3.14 distribution, verify `python --version` and `uuid.uuid7()`, declare `>=3.14,<3.15`, and capture the exact patch version used. Do not fall back silently to the currently installed Python 3.12.
+Mitigation: declare `>=3.14,<3.15`, record the verified 3.14.7 environment in the lock documentation, and make the authoritative quality command reject an incompatible interpreter before running other checks.
 
 ### Schema validator dependency surface
 
-Risk: `jsonschema[format]` introduces transitive dependencies.
+Risk: `jsonschema[format]` introduces transitive dependencies. The implementation directly uses `referencing`, although it is currently installed transitively rather than declared as a direct dependency.
 
-Mitigation: isolate it in `contracts`, lock all resolved versions, do not expose library types outside that module, and test explicit `FormatChecker` activation rather than assuming the extra enables validation.
+Mitigation: isolate schema validation dependencies in `contracts`, lock all resolved versions, do not expose library types outside that module, and test explicit `FormatChecker` activation rather than assuming the extra enables validation. Review whether `referencing` should become a direct dependency when the dependency and distribution strategy is revisited.
+
+### Schema distribution packaging
+
+Risk: repository-local and editable-install workflows are validated, but inclusion and resolution of schemas from a built wheel have not been validated.
+
+Mitigation: retain this as a non-blocking follow-up until a distribution strategy is required; do not infer wheel readiness from the Phase 01 local validation result.
 
 ### No third-party formatter, linter, type checker, or test framework
 
@@ -1030,7 +1031,7 @@ Risk: future work may treat logs as authoritative research evidence or cross-cli
 
 Mitigation: document and test the distinction; evidence and audit persistence remain separate later responsibilities.
 
-## 19. Approved decisions and execution authorization
+## 19. Approved decisions and execution status
 
 The owner has approved:
 
@@ -1046,7 +1047,7 @@ The owner has approved:
 10. No pytest, Pydantic, Ruff, mypy, ORM, DI container, or task runner in Phase 01.
 11. Frozen dataclasses and immutable provenance records.
 
-These decisions approve the plan but do not authorize execution. M0 begins only after the owner gives final explicit authorization.
+These decisions governed the authorized M0 through M6 implementation. All Phase 01 milestones are closed.
 
 ## 20. Accepted ADR-0009
 

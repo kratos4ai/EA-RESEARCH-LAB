@@ -38,9 +38,9 @@ Run the complete local check with the project virtual environment active:
 python tools/check.py
 ```
 
-The command verifies the Python 3.14 baseline and `uuid.uuid7()` availability, compiles the Python sources, and runs `unittest` discovery. A failing check returns a non-zero exit status.
+The command verifies the Python 3.14 baseline and `uuid.uuid7()` availability, compiles the Python sources, and runs complete `unittest` discovery. The discovered suite includes schema/catalog validation and standard-library AST architecture checks. A failing check returns a non-zero exit status.
 
-Installing the `jsonschema[format]` extra does not activate format validation by itself. Schema validators must pass an explicit `FormatChecker`; the M1 negative test verifies this behavior.
+Installing the `jsonschema[format]` extra does not activate format validation by itself. Schema validators must pass an explicit `FormatChecker`; negative contract tests verify this behavior.
 
 ## Configuration
 

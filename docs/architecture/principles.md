@@ -26,7 +26,7 @@ Analytical calculations should be deterministic whenever practical and must iden
 
 ## P07 — Schema first and explicit evolution
 
-Serialized contracts are versioned and machine-validated. Compatible additions are preferred; breaking changes require a new major version. Readers must support declared historical versions or fail explicitly, and immutable raw evidence is never rewritten to migrate schemas.
+Serialized contracts are versioned and machine-validated. Compatible additions are preferred. Breaking changes create a new minor version while a contract is pre-stable and a new major version once it is stable, as defined by ADR-0008. Readers must support declared historical versions or fail explicitly, and immutable raw evidence is never rewritten to migrate schemas.
 
 ## P08 — Provenance everywhere
 

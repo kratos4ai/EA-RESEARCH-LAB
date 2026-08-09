@@ -131,7 +131,7 @@ Implementations may store this as a graph rather than a literal linked list. The
 
 Evidence may be appended while a run is actively collecting. Each persisted raw object or chunk is immutable once written. A run reaches a reproducible evidence boundary only when a manifest identifies and hashes the complete evidence set for that collection outcome.
 
-Completed, failed, cancelled, and collection-failed runs may all produce sealed manifests. Late evidence never rewrites a sealed manifest or its objects; it creates a new manifest revision that references the prior revision and preserves both histories.
+Evidence collection may end as completed, failed, cancelled, or collection failed independently from the Run execution lifecycle. A completed Run may therefore have a collection-failed evidence outcome without acquiring another Run state. Every terminal evidence outcome may produce a sealed manifest. Late evidence never rewrites a sealed manifest or its objects; it creates a new manifest revision that references the prior revision and preserves both histories.
 
 Corrections, enrichment, normalization, and alternative calculations produce new derived datasets or analytical results. They do not modify raw evidence.
 
@@ -148,7 +148,7 @@ The assessment and its reasons are provenance metadata. Exact reproducibility of
 
 ## Schema evolution
 
-Every persisted or externally exchanged contract carries a schema identity and version. Additive backward-compatible evolution is preferred within a major version. Breaking semantic or structural changes require a new major version and explicit readers/adapters for supported historical versions.
+Every persisted or externally exchanged contract carries a schema identity and exact version. Under ADR-0008, breaking changes create a new minor version for pre-stable contracts and a new major version for stable contracts. Compatible changes create new exact versions under the corresponding maturity rules, and declared supported historical versions retain explicit readers or adapters.
 
 Raw evidence is never rewritten to adopt a newer schema. Derived datasets and analytical results are regenerated as new versions. Readers must either interpret a declared supported version or fail explicitly; silent coercion is not permitted.
 

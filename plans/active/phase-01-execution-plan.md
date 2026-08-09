@@ -1,6 +1,6 @@
 # Phase 01 — Foundation Execution Plan
 
-- Status: In progress — M0 through M4 closed; M5 not started
+- Status: In progress — M0 through M5 closed; M6 not started
 - Scope: Phase 01 only
 - Implementation authorization: Not granted by this document
 
@@ -844,6 +844,8 @@ Release the first internally consistent, machine-validated schema set with matur
 - ingestion runtime.
 
 ### M5 — Configuration, request context, and logging
+
+- Milestone status: Completed and approved
 
 #### Objective
 

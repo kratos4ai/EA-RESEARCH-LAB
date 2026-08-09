@@ -28,30 +28,11 @@ Core responsibilities:
 
 ## Run lifecycle
 
-Initial lifecycle proposal:
+Run status describes execution lifecycle only:
 
-```text
-CREATED
-  ↓
-VALIDATING
-  ↓
-READY
-  ↓
-RUNNING
-  ↓
-COLLECTING
-  ↓
-COMPLETED
-```
+The pre-stable Run contract exposes `CREATED`, `RUNNING`, `COMPLETED`, `FAILED`, and `CANCELLED`. Transition rules remain deferred until execution-provider behavior exercises the lifecycle.
 
-Failure states may include:
-
-```text
-INVALID
-FAILED
-CANCELLED
-COLLECTION_FAILED
-```
+Evidence collection, persistence, and analysis have independent lifecycles. In particular, `COLLECTION_FAILED` is an evidence collection outcome, not a Run state. Additional orchestration stages must not become Run states without evidence for a new version of the pre-stable Run contract.
 
 ## Boundary
 

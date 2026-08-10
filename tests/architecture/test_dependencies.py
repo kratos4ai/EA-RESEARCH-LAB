@@ -52,10 +52,10 @@ class DependencyBoundaryTests(unittest.TestCase):
             external_modules=("jsonschema", "referencing"),
         )
 
-    def test_only_build_orchestration_uses_contracts_from_application(self) -> None:
+    def test_only_approved_orchestration_uses_contracts_from_application(self) -> None:
         violations = []
         for path in sorted((PACKAGE_ROOT / "application").glob("*.py")):
-            if path.name == "build.py":
+            if path.name in {"build.py", "execution.py"}:
                 continue
             for module, line in _imports(path):
                 if module == "ea_research_lab.contracts" or module.startswith(
@@ -109,6 +109,30 @@ class DependencyBoundaryTests(unittest.TestCase):
                     [term for term in forbidden if term in source],
                     [],
                 )
+
+    def test_execution_boundary_excludes_provider_and_trading_semantics(self) -> None:
+        forbidden = (
+            "metatrader",
+            "strategy tester",
+            "subprocess",
+            "pathlib",
+            "windows",
+            "filesystem",
+            "terminal configuration",
+            "exit_code",
+            "report_path",
+            "log_path",
+            "account",
+            "symbol",
+            "timeframe",
+            "signal",
+            "indicator",
+            "live trading",
+        )
+        for relative_path in ("domain/execution.py", "application/execution.py"):
+            source = (PACKAGE_ROOT / relative_path).read_text(encoding="utf-8").lower()
+            with self.subTest(path=relative_path):
+                self.assertEqual([term for term in forbidden if term in source], [])
 
     def test_build_workspace_excludes_provider_execution_semantics(self) -> None:
         source = (PACKAGE_ROOT / "infrastructure/build_workspace.py").read_text(

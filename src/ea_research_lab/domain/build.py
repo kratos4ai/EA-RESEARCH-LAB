@@ -1,0 +1,25 @@
+"""Provider-neutral build values."""
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+from ea_research_lab.domain.errors import InvalidValueError
+from ea_research_lab.domain.provenance import SchemaReferencedPayload
+
+
+class BuildOutcome(StrEnum):
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+@dataclass(frozen=True, slots=True)
+class BuildProviderObservation:
+    """Opaque provider evidence that is not a final platform outcome."""
+
+    provider_evidence: SchemaReferencedPayload
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.provider_evidence, SchemaReferencedPayload):
+            raise InvalidValueError(
+                "Build provider observation requires schema-referenced evidence."
+            )

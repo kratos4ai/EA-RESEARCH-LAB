@@ -1,4 +1,4 @@
-"""Enforce the dependency boundaries implemented in Phase 01."""
+"""Enforce the implemented package dependency boundaries."""
 
 from __future__ import annotations
 
@@ -51,7 +51,7 @@ class DependencyBoundaryTests(unittest.TestCase):
             external_modules=("jsonschema", "referencing"),
         )
 
-    def test_infrastructure_imports_only_inward_phase_01_modules(self) -> None:
+    def test_infrastructure_imports_only_approved_inward_modules(self) -> None:
         self._assert_imports(
             PACKAGE_ROOT / "infrastructure",
             internal_prefixes=(
@@ -61,7 +61,7 @@ class DependencyBoundaryTests(unittest.TestCase):
             ),
         )
 
-    def test_only_phase_01_packages_exist(self) -> None:
+    def test_only_approved_core_packages_exist(self) -> None:
         packages = {
             path.name
             for path in PACKAGE_ROOT.iterdir()
@@ -71,6 +71,30 @@ class DependencyBoundaryTests(unittest.TestCase):
             packages,
             {"application", "contracts", "domain", "infrastructure"},
         )
+
+    def test_build_boundary_excludes_external_and_trading_semantics(self) -> None:
+        forbidden = (
+            "metaeditor",
+            "subprocess",
+            "pathlib",
+            "windows",
+            "filesystem",
+            ".ex5",
+            "exit_code",
+            "log_path",
+            "strategy",
+            "signal",
+            "symbol",
+            "timeframe",
+            "indicator",
+        )
+        for relative_path in ("domain/build.py", "application/build.py"):
+            source = (PACKAGE_ROOT / relative_path).read_text(encoding="utf-8").lower()
+            with self.subTest(path=relative_path):
+                self.assertEqual(
+                    [term for term in forbidden if term in source],
+                    [],
+                )
 
     def test_dependencies_are_approved_and_locked(self) -> None:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))

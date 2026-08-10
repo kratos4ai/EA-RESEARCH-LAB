@@ -1,6 +1,6 @@
 # Phase 02 — Build & Artifact Pipeline Execution Plan
 
-- Status: M6 closure verification; M0-M5 completed; Phase 02 completion pending owner approval and a clean checkpoint
+- Status: Completed
 - Scope: Phase 02 only
 - Baseline: contract checkpoint `4182552a9852552f24f6e3a0960c478a739ef7cf`
 - Runtime baseline: Python `>=3.14,<3.15`
@@ -585,7 +585,7 @@ Compose M1–M4 into one application use case with explicit context, safe failur
 
 ### M6 — Enforcement and Phase 02 closure
 
-- Status: Closure verification complete; pending owner approval and clean checkpoint
+- Status: Completed in checkpoint `38edbff`
 
 #### Objective
 
@@ -705,4 +705,4 @@ Phase 02 is complete only when all are true:
 
 ## 15. Approval and execution boundary
 
-M0-M5 are implemented and checkpointed. M6 contains enforcement and documentation closure only. Phase 02 may be marked completed after the owner approves M6 and creates a clean closure checkpoint. Phase 03 planning and implementation remain unauthorized.
+M0-M6 are implemented, approved, and checkpointed. Phase 02 was completed in closure checkpoint `38edbff`. Phase 03 planning and implementation remain unauthorized.

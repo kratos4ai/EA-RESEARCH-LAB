@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:mt5-strategy-tester-execution:0.1.0",
+  "title": "MT5 Strategy Tester Execution 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "provider",
+    "symbol",
+    "period",
+    "model",
+    "execution_mode",
+    "from_date",
+    "to_date",
+    "deposit",
+    "currency",
+    "leverage"
+  ],
+  "properties": {
+    "schema_name": {"const": "mt5-strategy-tester-execution"},
+    "schema_version": {"const": "0.1.0"},
+    "provider": {"const": "metatrader5-strategy-tester"},
+    "symbol": {"type": "string", "pattern": "^[^\\r\\n=]{1,64}$"},
+    "period": {
+      "enum": [
+        "M1", "M2", "M3", "M4", "M5", "M6", "M10", "M12", "M15",
+        "M20", "M30", "H1", "H2", "H3", "H4", "H6", "H8", "H12",
+        "D1", "W1", "MN1"
+      ]
+    },
+    "model": {"type": "integer", "minimum": 0, "maximum": 4},
+    "execution_mode": {
+      "oneOf": [
+        {"const": -1},
+        {"type": "integer", "minimum": 0, "maximum": 600000}
+      ]
+    },
+    "from_date": {"type": "string", "format": "date"},
+    "to_date": {"type": "string", "format": "date"},
+    "deposit": {"type": "number", "exclusiveMinimum": 0},
+    "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+    "leverage": {"type": "string", "pattern": "^1:[1-9][0-9]*$"}
+  }
+}

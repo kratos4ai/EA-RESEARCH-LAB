@@ -56,6 +56,18 @@ SUPPORTED_SCHEMA_PATHS: Mapping[SchemaRef, Path] = MappingProxyType(
         _ref("metaeditor-build-evidence", "0.1.0"): Path(
             "metaeditor-build-evidence/v0.1.0.schema.json"
         ),
+        _ref("mt5-strategy-tester-configuration", "0.1.0"): Path(
+            "mt5-strategy-tester-configuration/v0.1.0.schema.json"
+        ),
+        _ref("mt5-strategy-tester-configuration", "0.2.0"): Path(
+            "mt5-strategy-tester-configuration/v0.2.0.schema.json"
+        ),
+        _ref("mt5-strategy-tester-execution", "0.1.0"): Path(
+            "mt5-strategy-tester-execution/v0.1.0.schema.json"
+        ),
+        _ref("mt5-strategy-tester-evidence", "0.1.0"): Path(
+            "mt5-strategy-tester-evidence/v0.1.0.schema.json"
+        ),
     }
 )
 

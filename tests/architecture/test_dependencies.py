@@ -152,10 +152,15 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
         self.assertEqual([term for term in forbidden if term in source], [])
 
-    def test_only_build_adapters_use_contracts_from_infrastructure(self) -> None:
+    def test_only_approved_adapters_use_contracts_from_infrastructure(self) -> None:
         violations = []
         for path in sorted((PACKAGE_ROOT / "infrastructure").glob("*.py")):
-            if path.name in {"artifact.py", "build_workspace.py", "metaeditor.py"}:
+            if path.name in {
+                "artifact.py",
+                "build_workspace.py",
+                "metaeditor.py",
+                "mt5_strategy_tester.py",
+            }:
                 continue
             for module, line in _imports(path):
                 if module == "ea_research_lab.contracts" or module.startswith(
@@ -187,12 +192,26 @@ class DependencyBoundaryTests(unittest.TestCase):
                     if module.split(".", 1)[0] in forbidden_core_imports:
                         violations.append(f"{path.relative_to(ROOT)}:{line}: {module}")
         for path in sorted((PACKAGE_ROOT / "infrastructure").glob("*.py")):
-            if path.name == "metaeditor.py":
+            if path.name in {"metaeditor.py", "mt5_strategy_tester.py"}:
                 continue
             for module, line in _imports(path):
                 if module.split(".", 1)[0] == "subprocess":
                     violations.append(f"{path.relative_to(ROOT)}:{line}: {module}")
         self.assertEqual(violations, [])
+
+    def test_mt5_semantics_remain_inside_its_adapter_and_contracts(self) -> None:
+        adapter = (PACKAGE_ROOT / "infrastructure/mt5_strategy_tester.py").read_text(
+            encoding="utf-8"
+        ).lower()
+        self.assertNotIn("raw_evidence", adapter)
+        self.assertNotIn("run_manifest", adapter)
+        for boundary in ("domain", "application"):
+            for path in (PACKAGE_ROOT / boundary).glob("*.py"):
+                source = path.read_text(encoding="utf-8").lower()
+                with self.subTest(path=path.relative_to(ROOT)):
+                    self.assertNotIn("metatrader5-strategy-tester", source)
+                    self.assertNotIn("terminal64", source)
+                    self.assertNotIn("strategy tester", source)
 
     def test_artifact_adapter_does_not_finalize_build_or_persist(self) -> None:
         source = (PACKAGE_ROOT / "infrastructure/artifact.py").read_text(

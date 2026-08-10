@@ -20,6 +20,7 @@ class ApplicationErrorCode(StrEnum):
     BUILD_INPUT_INVALID = "build_input_invalid"
     BUILD_PROVIDER_FAILED = "build_provider_failed"
     ARTIFACT_REJECTED = "artifact_rejected"
+    EXECUTION_PROVIDER_FAILED = "execution_provider_failed"
 
 
 def _freeze_json(value: object) -> object:

@@ -159,6 +159,61 @@ EXPECTED_PROPERTIES = {
         "candidate_observed",
         "declared_inputs_only",
     },
+    ("mt5-strategy-tester-configuration", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "provider",
+        "terminal_executable",
+        "terminal_digest",
+        "portable_root",
+        "environment",
+        "max_output_bytes",
+    },
+    ("mt5-strategy-tester-configuration", "0.2.0"): {
+        "schema_name",
+        "schema_version",
+        "provider",
+        "terminal_executable",
+        "terminal_digest",
+        "terminal_mode",
+        "data_root",
+        "expected_account_context",
+        "environment",
+        "max_output_bytes",
+    },
+    ("mt5-strategy-tester-execution", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "provider",
+        "symbol",
+        "period",
+        "model",
+        "execution_mode",
+        "from_date",
+        "to_date",
+        "deposit",
+        "currency",
+        "leverage",
+    },
+    ("mt5-strategy-tester-evidence", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "provider",
+        "terminal_digest",
+        "terminal_version",
+        "process_started",
+        "timed_out",
+        "exit_code",
+        "duration_ms",
+        "ownership_established",
+        "owned_processes_stopped",
+        "config_loaded",
+        "report_observed",
+        "terminal_log_observed",
+        "tester_log_observed",
+        "log_encoding",
+        "completion",
+    },
 }
 EXPECTED_COMMON_DEFINITIONS = {
     "analysis_definition_id",
@@ -286,6 +341,20 @@ class ContractNeutralityTests(unittest.TestCase):
                 self.assertEqual(
                     self.schemas[identity]["properties"]["provider"]["const"],
                     "metaeditor",
+                )
+
+    def test_mt5_tester_contracts_remain_provider_namespaced(self) -> None:
+        for identity in (
+            ("mt5-strategy-tester-configuration", "0.1.0"),
+            ("mt5-strategy-tester-configuration", "0.2.0"),
+            ("mt5-strategy-tester-execution", "0.1.0"),
+            ("mt5-strategy-tester-evidence", "0.1.0"),
+        ):
+            with self.subTest(schema=identity):
+                self.assertTrue(identity[0].startswith("mt5-strategy-tester-"))
+                self.assertEqual(
+                    self.schemas[identity]["properties"]["provider"]["const"],
+                    "metatrader5-strategy-tester",
                 )
 
     def _assert_opaque_payload(

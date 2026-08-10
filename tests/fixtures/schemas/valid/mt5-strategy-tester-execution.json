@@ -1,0 +1,14 @@
+{
+  "schema_name": "mt5-strategy-tester-execution",
+  "schema_version": "0.1.0",
+  "provider": "metatrader5-strategy-tester",
+  "symbol": "EURUSD",
+  "period": "M1",
+  "model": 1,
+  "execution_mode": 0,
+  "from_date": "2026-08-03",
+  "to_date": "2026-08-04",
+  "deposit": 10000,
+  "currency": "USD",
+  "leverage": "1:100"
+}

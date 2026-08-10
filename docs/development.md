@@ -52,6 +52,49 @@ python -m unittest discover -s tests\integration -p test_*.py -v
 
 The provider gate requires an explicit executable path, stops when another MetaEditor process makes ownership ambiguous, and uses disposable strategy-neutral fixtures. It must never compile project EA/SUT source.
 
+The controlled Strategy Tester integration is also opt-in and separate. The
+currently supported provider environment is explicit main mode with a
+separately supplied, known no-trading EX5 fixture and an already provisioned
+Demo account context:
+
+```powershell
+$env:EA_RESEARCH_LAB_MT5_TERMINAL = '<installation>\terminal64.exe'
+$env:EA_RESEARCH_LAB_MT5_DATA_ROOT = '<expected-main-mode-data-root>'
+$env:EA_RESEARCH_LAB_MT5_ARTIFACT = '<controlled-fixture>\fixture.ex5'
+$env:EA_RESEARCH_LAB_MT5_CONTROLLED_ARTIFACT = '1'
+$env:EA_RESEARCH_LAB_MT5_INTEGRATION = '1'
+python -m unittest tests.integration.test_mt5_strategy_tester -v
+```
+
+The adapter invokes `terminal64.exe /config:"<tester.ini>"` without `/portable`.
+It verifies the configured executable digest, checks the data root's
+`origin.txt` association with that installation, and requires an existing Demo
+server context in provider configuration. It never discovers an installation,
+copies account databases, or handles credentials. Portable-mode successful
+execution remains unsupported until a portable tester account is deliberately
+provisioned and observed.
+
+The main-mode data root is provider-owned mutable state. MT5 may update its
+account, agent, server, settings, and terminal files during normal operation;
+the Lab neither snapshots nor restores them. The adapter creates only an
+exclusive per-Run directory below `MQL5/Experts/EAResearchLab`, stages the exact
+accepted Artifact bytes as `sut.ex5`, verifies its SHA-256, captures bounded
+report/log deltas, and removes only that owned directory. Live Expert trading
+and DLL imports, optimization, visual mode, and remote/cloud agents are disabled
+in the generated tester configuration.
+
+On terminal build `5.0.0.6104`, the Windows list-to-command-line conversion was
+observed to add a trailing quote to a spaced `/config:` path. The adapter
+therefore emits the fixed MetaTrader command-line grammar directly while still
+using `shell=False`; callers cannot add arguments. Terminal and tester logs
+were observed as UTF-16LE. A controlled main-mode Demo execution completed in
+12.5 seconds with process exit code `0`, produced a 22,952-byte report, preserved
+the staged Artifact digest, and left no terminal or tester process. Provider
+success nevertheless requires report, terminal and tester logs, a loaded start
+configuration, a tester completion marker, and established process ownership;
+the exit code alone is not success. Provider observation is not a final Run
+outcome.
+
 ## Configuration
 
 Platform configuration is immutable and currently limited to settings the foundation consumes:
@@ -82,4 +125,8 @@ Event names use lowercase dot-separated segments. Correlation identifiers retain
 
 Operational logs describe platform operation and debugging. They are not Raw Evidence and are not future Audit Records. Phase 02 introduces neither audit persistence nor an audit lifecycle and does not log source bytes, Artifact bytes, compiler logs, provider payloads, or physical paths automatically.
 
-The current runtime contains the Phase 01 foundation and the Phase 02 Build and Artifact pipeline. It contains no persistent storage, ExecutionProvider, Strategy Tester, Platform API, analysis, UI, or MCP implementation or scaffolding.
+The current runtime contains the Phase 01 foundation, the Phase 02 Build and
+Artifact pipeline, and the Phase 03 provider-neutral execution boundary plus
+the controlled MT5 Strategy Tester adapter. It contains no Run finalization,
+Raw Evidence sealing, persistent storage, Platform API, analysis, UI, or MCP
+implementation or scaffolding.

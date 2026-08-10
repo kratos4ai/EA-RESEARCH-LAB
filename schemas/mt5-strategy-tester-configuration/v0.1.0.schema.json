@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:mt5-strategy-tester-configuration:0.1.0",
+  "title": "MT5 Strategy Tester Configuration 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "provider",
+    "terminal_executable",
+    "terminal_digest",
+    "portable_root",
+    "environment",
+    "max_output_bytes"
+  ],
+  "properties": {
+    "schema_name": {"const": "mt5-strategy-tester-configuration"},
+    "schema_version": {"const": "0.1.0"},
+    "provider": {"const": "metatrader5-strategy-tester"},
+    "terminal_executable": {"type": "string", "minLength": 1},
+    "terminal_digest": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+    },
+    "portable_root": {"type": "string", "minLength": 1},
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SystemRoot": {"type": "string", "minLength": 1},
+        "WINDIR": {"type": "string", "minLength": 1},
+        "PATH": {"type": "string", "minLength": 1},
+        "TEMP": {"type": "string", "minLength": 1},
+        "TMP": {"type": "string", "minLength": 1},
+        "USERPROFILE": {"type": "string", "minLength": 1},
+        "APPDATA": {"type": "string", "minLength": 1},
+        "LOCALAPPDATA": {"type": "string", "minLength": 1},
+        "PROGRAMDATA": {"type": "string", "minLength": 1},
+        "COMSPEC": {"type": "string", "minLength": 1},
+        "HOMEDRIVE": {"type": "string", "minLength": 1},
+        "HOMEPATH": {"type": "string", "minLength": 1}
+      }
+    },
+    "max_output_bytes": {"type": "integer", "minimum": 2}
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schema_name": "mt5-strategy-tester-evidence",
+  "schema_version": "0.1.0",
+  "provider": "metatrader5-strategy-tester",
+  "terminal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "terminal_version": "5.0.0.6104",
+  "process_started": true,
+  "timed_out": false,
+  "exit_code": 0,
+  "duration_ms": 1000,
+  "ownership_established": true,
+  "owned_processes_stopped": true,
+  "config_loaded": true,
+  "report_observed": true,
+  "terminal_log_observed": true,
+  "tester_log_observed": true,
+  "log_encoding": "utf-16le",
+  "completion": "completed"
+}

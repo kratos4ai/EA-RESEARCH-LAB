@@ -1,0 +1,10 @@
+{
+  "schema_name": "mt5-strategy-tester-configuration",
+  "schema_version": "0.1.0",
+  "provider": "metatrader5-strategy-tester",
+  "terminal_executable": "C:\\controlled-mt5\\terminal64.exe",
+  "terminal_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "portable_root": "C:\\controlled-mt5",
+  "environment": {"SystemRoot": "C:\\Windows"},
+  "max_output_bytes": 4194304
+}

@@ -1,6 +1,6 @@
 # Phase 03 — Run & Evidence Pipeline Execution Plan
 
-- Status: Proposed; runtime implementation not started
+- Status: Active; M1 closed and M2 implemented pending checkpoint approval
 - Scope: Phase 03 only
 - Baseline: completed Phase 02 at `f63171092910adb4f885895f053172d09d46273b`
 - Runtime: Python `>=3.14,<3.15`
@@ -108,13 +108,13 @@ tests/test_mt5_strategy_tester.py
 tests/integration/test_mt5_strategy_tester.py
 tests/architecture/test_dependencies.py
 docs/development.md
-schemas/<provider-contract>/v0.1.0.schema.json  # only if evidence requires it
+schemas/mt5-strategy-tester-*/v0.x.schema.json # only if evidence requires it
 ```
 
 ### Implementation and tests
 
-- Validate terminal executable identity and an explicitly owned execution
-  workspace/configuration.
+- Validate terminal executable identity and its explicitly configured main-mode
+  data-root association. Treat that data root as provider-owned mutable state.
 - Stage only accepted Artifact bytes and disposable tester inputs; never execute
   from or overwrite the project EA tree.
 - Use adapter-owned argv, `shell=False`, bounded timeout/capture, and no arbitrary
@@ -130,8 +130,9 @@ schemas/<provider-contract>/v0.1.0.schema.json  # only if evidence requires it
 - Portable tests cover invocation, paths, environment, ownership, timeout,
   ambiguity, bounded capture, safe logging/errors, and cleanup.
 - Opt-in integration uses a known Phase 02 Artifact, disposable configuration,
-  no live trading/account, and proves a conclusive execution plus one safe
-  failure/timeout when reproducible.
+  no live trading, and an externally provisioned Demo account precondition. It
+  proves a conclusive execution; portable account provisioning and an expanded
+  real-provider failure matrix remain unsupported until reproducible.
 
 ### Acceptance criteria
 

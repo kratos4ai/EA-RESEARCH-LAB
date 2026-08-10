@@ -57,9 +57,11 @@ class ContractSchemaTests(unittest.TestCase):
                 ("dataset-manifest", "0.1.0"),
                 ("telemetry-envelope", "0.1.0"),
                 ("analysis-result", "0.1.0"),
+                ("metaeditor-build-configuration", "0.1.0"),
+                ("metaeditor-build-evidence", "0.1.0"),
             },
         )
-        self.assertEqual(len(SUPPORTED_SCHEMA_PATHS), 11)
+        self.assertEqual(len(SUPPORTED_SCHEMA_PATHS), 13)
 
     def test_every_schema_is_valid_draft_2020_12(self) -> None:
         identifiers = set()
@@ -158,7 +160,7 @@ class ContractSchemaTests(unittest.TestCase):
         )
 
     def test_all_representative_documents_validate(self) -> None:
-        self.assertEqual(len(self.valid_documents), 10)
+        self.assertEqual(len(self.valid_documents), 12)
         for name, document in self.valid_documents.items():
             with self.subTest(fixture=name):
                 validate_document(document, self.catalog)

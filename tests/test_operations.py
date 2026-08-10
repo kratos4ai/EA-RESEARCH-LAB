@@ -14,6 +14,7 @@ from ea_research_lab.application.identity import new_entity_id
 from ea_research_lab.domain.identifiers import (
     AnalysisResultId,
     ArtifactId,
+    BuildRecordId,
     DatasetId,
     RequestId,
     RunId,
@@ -122,6 +123,7 @@ class OperationalLoggingTests(unittest.TestCase):
             "request.rejected",
             "Request validation failed.",
             context=context,
+            build_record_id=new_entity_id(BuildRecordId),
             run_id=new_entity_id(RunId),
             artifact_id=new_entity_id(ArtifactId),
             dataset_id=new_entity_id(DatasetId),
@@ -140,6 +142,7 @@ class OperationalLoggingTests(unittest.TestCase):
         self.assertEqual(record["error_code"], "invalid_value")
         self.assertTrue(record["run_id"].startswith("run_"))
         self.assertTrue(record["artifact_id"].startswith("artifact_"))
+        self.assertTrue(record["build_record_id"].startswith("build_"))
         self.assertTrue(record["dataset_id"].startswith("dataset_"))
         self.assertTrue(record["analysis_result_id"].startswith("analysisresult_"))
         timestamp = datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00"))

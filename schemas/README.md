@@ -17,6 +17,8 @@ This directory contains the exact, machine-readable boundary contracts. All sche
 | Dataset manifest | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:dataset-manifest:0.1.0` |
 | Telemetry envelope | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:telemetry-envelope:0.1.0` |
 | Analysis result | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:analysis-result:0.1.0` |
+| MetaEditor build configuration | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:metaeditor-build-configuration:0.1.0` |
+| MetaEditor build evidence | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:metaeditor-build-evidence:0.1.0` |
 
 `common/1.0.0` contains reusable provider-independent value definitions and is not an instance contract. Boundary contracts remain pre-stable until representative producers and consumers exercise them. Passing validation does not promote a contract to stable.
 
@@ -26,7 +28,7 @@ Reproducibility enum members serialize using the domain values `exact`, `equival
 
 Schema files use `schemas/<schema-name>/v<major>.<minor>.<patch>.schema.json`. Every boundary instance declares the exact `schema_name` and `schema_version` used to select its schema.
 
-`ea_research_lab.contracts.catalog` is the closed support declaration. It loads only the eleven exact paths listed above and builds a local reference registry without a retrieval callback. Runtime network resolution is forbidden.
+`ea_research_lab.contracts.catalog` is the closed support declaration. It loads only the thirteen exact paths listed above and builds a local reference registry without a retrieval callback. Runtime network resolution is forbidden.
 
 Schema references carried inside opaque extension envelopes identify the extension contract. They do not cause network retrieval or imply that the Phase 01 catalog supports that extension schema. A consumer validates such payload content only when it separately supports the referenced extension contract.
 

@@ -165,7 +165,7 @@ class BuildBoundaryTests(unittest.TestCase):
 
         self.assertEqual(
             tuple(field.name for field in fields(observation)),
-            ("provider_evidence",),
+            ("provider_evidence", "candidate_available"),
         )
         self.assertFalse(hasattr(observation, "artifact_id"))
         self.assertFalse(hasattr(observation, "candidate"))
@@ -195,6 +195,8 @@ class BuildBoundaryTests(unittest.TestCase):
     def test_observation_requires_schema_referenced_evidence(self) -> None:
         with self.assertRaises(InvalidValueError):
             BuildProviderObservation(object())
+        with self.assertRaises(InvalidValueError):
+            BuildProviderObservation(_payload("build-provider-evidence"), 1)
 
 
 if __name__ == "__main__":

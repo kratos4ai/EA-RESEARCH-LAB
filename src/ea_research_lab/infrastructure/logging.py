@@ -14,6 +14,7 @@ from ea_research_lab.application.errors import ApplicationError
 from ea_research_lab.domain.identifiers import (
     AnalysisResultId,
     ArtifactId,
+    BuildRecordId,
     DatasetId,
     RunId,
 )
@@ -25,6 +26,7 @@ _EVENT_PATTERN = re.compile(r"[a-z][a-z0-9]*(?:\.[a-z0-9]+)*")
 _OPTIONAL_FIELDS = (
     "request_id",
     "caller_id",
+    "build_record_id",
     "run_id",
     "artifact_id",
     "dataset_id",
@@ -115,6 +117,7 @@ def log_event(
     message: str,
     *,
     context: RequestContext | None = None,
+    build_record_id: BuildRecordId | None = None,
     run_id: RunId | None = None,
     artifact_id: ArtifactId | None = None,
     dataset_id: DatasetId | None = None,
@@ -157,6 +160,7 @@ def log_event(
         raise ValueError("Request context and application error IDs do not match.")
 
     correlations = (
+        ("build_record_id", build_record_id, BuildRecordId),
         ("run_id", run_id, RunId),
         ("artifact_id", artifact_id, ArtifactId),
         ("dataset_id", dataset_id, DatasetId),

@@ -115,10 +115,10 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
         self.assertEqual([term for term in forbidden if term in source], [])
 
-    def test_only_build_workspace_uses_contracts_from_infrastructure(self) -> None:
+    def test_only_build_adapters_use_contracts_from_infrastructure(self) -> None:
         violations = []
         for path in sorted((PACKAGE_ROOT / "infrastructure").glob("*.py")):
-            if path.name == "build_workspace.py":
+            if path.name in {"build_workspace.py", "metaeditor.py"}:
                 continue
             for module, line in _imports(path):
                 if module == "ea_research_lab.contracts" or module.startswith(
@@ -126,6 +126,20 @@ class DependencyBoundaryTests(unittest.TestCase):
                 ):
                     violations.append(f"{path.relative_to(ROOT)}:{line}: {module}")
         self.assertEqual(violations, [])
+
+    def test_metaeditor_semantics_remain_inside_its_adapter(self) -> None:
+        adapter = (PACKAGE_ROOT / "infrastructure/metaeditor.py").read_text(
+            encoding="utf-8"
+        ).lower()
+        self.assertNotIn("artifactid", adapter)
+        self.assertNotIn("buildoutcome", adapter)
+        for boundary in ("domain", "application"):
+            for path in (PACKAGE_ROOT / boundary).glob("*.py"):
+                source = path.read_text(encoding="utf-8").lower()
+                with self.subTest(path=path.relative_to(ROOT)):
+                    self.assertNotIn("metaeditor", source)
+                    self.assertNotIn("utf-16", source)
+                    self.assertNotIn("exit_code", source)
 
     def test_dependencies_are_approved_and_locked(self) -> None:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))

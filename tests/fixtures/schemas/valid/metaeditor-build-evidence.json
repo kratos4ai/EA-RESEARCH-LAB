@@ -1,0 +1,18 @@
+{
+  "schema_name": "metaeditor-build-evidence",
+  "schema_version": "0.1.0",
+  "provider": "metaeditor",
+  "executable_digest": "50f47217c681e022924e905a2296144a7712dcf07f27bcfc108bf972aa20214c",
+  "executable_version": "5.0.0.6104",
+  "process_started": true,
+  "timed_out": false,
+  "exit_code": 1,
+  "duration_ms": 1175,
+  "log_encoding": "utf-16le",
+  "log_digest": "e45460149a09eb99a072630a1fbffd91a6c69d7591f989c30e427433b944d06d",
+  "compiler_verdict": "succeeded",
+  "error_count": 0,
+  "warning_count": 0,
+  "candidate_observed": true,
+  "declared_inputs_only": true
+}

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:metaeditor-build-evidence:0.1.0",
+  "title": "MetaEditor Build Evidence 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "provider",
+    "executable_digest",
+    "executable_version",
+    "process_started",
+    "timed_out",
+    "exit_code",
+    "duration_ms",
+    "log_encoding",
+    "log_digest",
+    "compiler_verdict",
+    "error_count",
+    "warning_count",
+    "candidate_observed",
+    "declared_inputs_only"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "metaeditor-build-evidence"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "provider": {
+      "const": "metaeditor"
+    },
+    "executable_digest": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+    },
+    "executable_version": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "process_started": {
+      "type": "boolean"
+    },
+    "timed_out": {
+      "type": "boolean"
+    },
+    "exit_code": {
+      "type": ["integer", "null"]
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "log_encoding": {
+      "enum": ["utf-16le", null]
+    },
+    "log_digest": {
+      "oneOf": [
+        {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "compiler_verdict": {
+      "enum": ["succeeded", "failed", "unavailable"]
+    },
+    "error_count": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "warning_count": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "candidate_observed": {
+      "type": "boolean"
+    },
+    "declared_inputs_only": {
+      "type": ["boolean", "null"]
+    }
+  }
+}

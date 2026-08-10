@@ -1,4 +1,4 @@
-"""Enforce the published Phase 01 contract set and opaque boundaries."""
+"""Enforce the published contract set and opaque boundaries."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from ea_research_lab.contracts.catalog import (
 
 COMMON_ID = "urn:ea-research-lab:schema:common:1.0.0"
 EXPECTED_PROPERTIES = {
-    "analysis-result": {
+    ("analysis-result", "0.1.0"): {
         "schema_name",
         "schema_version",
         "analysis_result_id",
@@ -23,7 +23,7 @@ EXPECTED_PROPERTIES = {
         "result_schema",
         "result",
     },
-    "artifact-manifest": {
+    ("artifact-manifest", "0.1.0"): {
         "schema_name",
         "schema_version",
         "artifact_id",
@@ -35,7 +35,14 @@ EXPECTED_PROPERTIES = {
         "compiler",
         "built_at",
     },
-    "build-record": {
+    ("build-input-manifest", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "build_input_identity",
+        "primary",
+        "dependencies",
+    },
+    ("build-record", "0.1.0"): {
         "schema_name",
         "schema_version",
         "build_record_id",
@@ -45,7 +52,19 @@ EXPECTED_PROPERTIES = {
         "status",
         "artifact_id",
     },
-    "dataset-manifest": {
+    ("build-record", "0.2.0"): {
+        "schema_name",
+        "schema_version",
+        "build_record_id",
+        "source_revision",
+        "build_input",
+        "build_configuration_id",
+        "build_configuration",
+        "provider_evidence",
+        "status",
+        "artifact_id",
+    },
+    ("dataset-manifest", "0.1.0"): {
         "schema_name",
         "schema_version",
         "dataset_id",
@@ -57,7 +76,7 @@ EXPECTED_PROPERTIES = {
         "created_at",
         "dataset_schema",
     },
-    "raw-evidence-manifest": {
+    ("raw-evidence-manifest", "0.1.0"): {
         "schema_name",
         "schema_version",
         "manifest_id",
@@ -67,7 +86,7 @@ EXPECTED_PROPERTIES = {
         "outcome",
         "prior_manifest",
     },
-    "run-manifest": {
+    ("run-manifest", "0.1.0"): {
         "schema_name",
         "schema_version",
         "run_id",
@@ -82,7 +101,7 @@ EXPECTED_PROPERTIES = {
         "execution_reproducibility",
         "raw_evidence_manifest",
     },
-    "telemetry-envelope": {
+    ("telemetry-envelope", "0.1.0"): {
         "schema_name",
         "schema_version",
         "run_id",
@@ -94,7 +113,7 @@ EXPECTED_PROPERTIES = {
         "payload_schema",
         "payload",
     },
-    "test-definition": {
+    ("test-definition", "0.1.0"): {
         "schema_name",
         "schema_version",
         "test_definition_id",
@@ -131,7 +150,7 @@ class ContractNeutralityTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.catalog = load_catalog()
         cls.schemas = {
-            str(reference.name): schema
+            (str(reference.name), str(reference.version)): schema
             for reference, schema in cls.catalog.schemas.items()
         }
 
@@ -167,29 +186,36 @@ class ContractNeutralityTests(unittest.TestCase):
 
     def test_core_contract_vocabulary_is_the_approved_neutral_set(self) -> None:
         self.assertEqual(
-            set(self.schemas["common"]["$defs"]),
+            set(self.schemas[("common", "1.0.0")]["$defs"]),
             EXPECTED_COMMON_DEFINITIONS,
         )
-        for name, expected in EXPECTED_PROPERTIES.items():
-            schema = self.schemas[name]
-            with self.subTest(schema=name):
+        for identity, expected in EXPECTED_PROPERTIES.items():
+            schema = self.schemas[identity]
+            with self.subTest(schema=identity):
                 self.assertFalse(schema["additionalProperties"])
                 self.assertEqual(set(schema["properties"]), expected)
 
     def test_opaque_extension_points_remain_schema_referenced(self) -> None:
-        for name in (
-            "analysis-result",
-            "build-record",
-            "dataset-manifest",
-            "run-manifest",
-            "test-definition",
+        for identity in (
+            ("analysis-result", "0.1.0"),
+            ("build-record", "0.1.0"),
+            ("build-record", "0.2.0"),
+            ("dataset-manifest", "0.1.0"),
+            ("run-manifest", "0.1.0"),
+            ("test-definition", "0.1.0"),
         ):
-            with self.subTest(schema=name):
+            with self.subTest(schema=identity):
                 self._assert_opaque_payload(
-                    self.schemas[name]["$defs"]["schema_referenced_payload"]
+                    self.schemas[identity]["$defs"]["schema_referenced_payload"]
                 )
 
-        compiler = self.schemas["artifact-manifest"]["$defs"][
+        build_v2 = self.schemas[("build-record", "0.2.0")]
+        self.assertEqual(
+            build_v2["properties"]["provider_evidence"]["$ref"],
+            "#/$defs/schema_referenced_payload",
+        )
+
+        compiler = self.schemas[("artifact-manifest", "0.1.0")]["$defs"][
             "namespaced_payload"
         ]
         self.assertEqual(
@@ -198,17 +224,17 @@ class ContractNeutralityTests(unittest.TestCase):
         )
         self._assert_opaque_payload(compiler, namespaced=True)
 
-        telemetry = self.schemas["telemetry-envelope"]["properties"]
+        telemetry = self.schemas[("telemetry-envelope", "0.1.0")]["properties"]
         self._assert_schema_ref(telemetry["payload_schema"])
         self.assertTrue(telemetry["payload"]["additionalProperties"])
 
-        analysis = self.schemas["analysis-result"]["properties"]
+        analysis = self.schemas[("analysis-result", "0.1.0")]["properties"]
         self._assert_schema_ref(analysis["result_schema"])
         self.assertTrue(analysis["result"]["additionalProperties"])
 
-        evidence_object = self.schemas["raw-evidence-manifest"]["$defs"][
-            "evidence_object"
-        ]
+        evidence_object = self.schemas[("raw-evidence-manifest", "0.1.0")][
+            "$defs"
+        ]["evidence_object"]
         self._assert_schema_ref(evidence_object["properties"]["payload_schema"])
         self.assertNotIn("payload", evidence_object["properties"])
 

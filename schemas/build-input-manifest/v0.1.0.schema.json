@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:build-input-manifest:0.1.0",
+  "title": "Build Input Manifest 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "build_input_identity",
+    "primary",
+    "dependencies"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "build-input-manifest"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "build_input_identity": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+    },
+    "primary": {
+      "$ref": "#/$defs/workspace_member"
+    },
+    "dependencies": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/dependency_member"
+      }
+    }
+  },
+  "$defs": {
+    "logical_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspace_location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "path"],
+      "properties": {
+        "scope": {
+          "const": "workspace"
+        },
+        "path": {
+          "$ref": "#/$defs/logical_path"
+        }
+      }
+    },
+    "external_location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "root", "path"],
+      "properties": {
+        "scope": {
+          "const": "external"
+        },
+        "root": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+        },
+        "path": {
+          "$ref": "#/$defs/logical_path"
+        }
+      }
+    },
+    "workspace_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_location", "content_digest"],
+      "properties": {
+        "logical_location": {
+          "$ref": "#/$defs/workspace_location"
+        },
+        "content_digest": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        }
+      }
+    },
+    "dependency_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_location", "content_digest"],
+      "properties": {
+        "logical_location": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/workspace_location"
+            },
+            {
+              "$ref": "#/$defs/external_location"
+            }
+          ]
+        },
+        "content_digest": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        }
+      }
+    }
+  }
+}

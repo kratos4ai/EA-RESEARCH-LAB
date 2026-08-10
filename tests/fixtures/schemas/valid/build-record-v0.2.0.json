@@ -1,0 +1,30 @@
+{
+  "schema_name": "build-record",
+  "schema_version": "0.2.0",
+  "build_record_id": "build_0195395c-7c9e-7d91-8c2b-6d4f8e1a2b3c",
+  "source_revision": {
+    "vcs_kind": "git",
+    "repository": "ea-research-lab",
+    "revision": "ca7506268e62807dfe6f2920a7160355e5a383b8",
+    "is_dirty": true
+  },
+  "build_input": {
+    "schema_ref": "urn:ea-research-lab:schema:build-input-manifest:0.1.0",
+    "build_input_identity": "e2cc4327864f9d62f9352fa5f4204b5e66954e1d5331c8136a148680d498ee35"
+  },
+  "build_configuration_id": "envcfg_0195395c-7c9e-7e45-8a6f-1b3c5d7e9f01",
+  "build_configuration": {
+    "schema_ref": "urn:ea-research-lab:schema:example-build-configuration:0.1.0",
+    "value": {
+      "external_roots": ["mql5-standard"]
+    }
+  },
+  "provider_evidence": {
+    "schema_ref": "urn:ea-research-lab:schema:example-build-provider-evidence:0.1.0",
+    "value": {
+      "provider_verdict": "opaque"
+    }
+  },
+  "status": "succeeded",
+  "artifact_id": "artifact_0195395c-7c9e-7e12-9d3c-7e5f9a2b3c4d"
+}

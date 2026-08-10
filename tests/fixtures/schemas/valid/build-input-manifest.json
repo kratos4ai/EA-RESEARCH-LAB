@@ -1,0 +1,29 @@
+{
+  "schema_name": "build-input-manifest",
+  "schema_version": "0.1.0",
+  "build_input_identity": "e2cc4327864f9d62f9352fa5f4204b5e66954e1d5331c8136a148680d498ee35",
+  "primary": {
+    "logical_location": {
+      "scope": "workspace",
+      "path": "Experts/Main.mq5"
+    },
+    "content_digest": "a06ac4d8f2c389dc0f919b6ba2a809324c0d3e368741ec210be34db8179eebb7"
+  },
+  "dependencies": [
+    {
+      "logical_location": {
+        "scope": "workspace",
+        "path": "Include/Local.mqh"
+      },
+      "content_digest": "ba47be4aa6480d40f734f1f06a2591b6d72978f67894cc23e74445e587f77768"
+    },
+    {
+      "logical_location": {
+        "scope": "external",
+        "root": "mql5-standard",
+        "path": "Arrays/Array.mqh"
+      },
+      "content_digest": "8c8ac71e77adfe63daacc5d4851347e2d38b18f03e0a0c75a63a2785257894c6"
+    }
+  ]
+}

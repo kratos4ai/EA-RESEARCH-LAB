@@ -23,7 +23,11 @@ def _ref(name: str, version: str) -> SchemaRef:
 SUPPORTED_SCHEMA_PATHS: Mapping[SchemaRef, Path] = MappingProxyType(
     {
         _ref("common", "1.0.0"): Path("common/v1.0.0.schema.json"),
+        _ref("build-input-manifest", "0.1.0"): Path(
+            "build-input-manifest/v0.1.0.schema.json"
+        ),
         _ref("build-record", "0.1.0"): Path("build-record/v0.1.0.schema.json"),
+        _ref("build-record", "0.2.0"): Path("build-record/v0.2.0.schema.json"),
         _ref("artifact-manifest", "0.1.0"): Path(
             "artifact-manifest/v0.1.0.schema.json"
         ),
@@ -59,7 +63,7 @@ class SchemaCatalog:
 
 
 def load_catalog(schema_root: Path = SCHEMA_ROOT) -> SchemaCatalog:
-    """Load only the exact schema files declared by Phase 01."""
+    """Load only the exact schema files declared by the local catalog."""
 
     schemas: dict[SchemaRef, Mapping[str, object]] = {}
     registry = Registry()

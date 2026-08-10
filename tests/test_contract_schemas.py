@@ -1,4 +1,4 @@
-"""Contract tests for the exact Phase 01 schema catalog."""
+"""Contract tests for the exact local schema catalog."""
 
 from __future__ import annotations
 
@@ -47,7 +47,9 @@ class ContractSchemaTests(unittest.TestCase):
             actual,
             {
                 ("common", "1.0.0"),
+                ("build-input-manifest", "0.1.0"),
                 ("build-record", "0.1.0"),
+                ("build-record", "0.2.0"),
                 ("artifact-manifest", "0.1.0"),
                 ("test-definition", "0.1.0"),
                 ("run-manifest", "0.1.0"),
@@ -57,7 +59,7 @@ class ContractSchemaTests(unittest.TestCase):
                 ("analysis-result", "0.1.0"),
             },
         )
-        self.assertEqual(len(SUPPORTED_SCHEMA_PATHS), 9)
+        self.assertEqual(len(SUPPORTED_SCHEMA_PATHS), 11)
 
     def test_every_schema_is_valid_draft_2020_12(self) -> None:
         identifiers = set()
@@ -156,7 +158,7 @@ class ContractSchemaTests(unittest.TestCase):
         )
 
     def test_all_representative_documents_validate(self) -> None:
-        self.assertEqual(len(self.valid_documents), 8)
+        self.assertEqual(len(self.valid_documents), 10)
         for name, document in self.valid_documents.items():
             with self.subTest(fixture=name):
                 validate_document(document, self.catalog)
@@ -209,6 +211,7 @@ class ContractSchemaTests(unittest.TestCase):
     def test_each_boundary_contract_rejects_wrong_primary_id_prefix(self) -> None:
         primary_ids = {
             "build-record.json": "build_record_id",
+            "build-record-v0.2.0.json": "build_record_id",
             "artifact-manifest.json": "artifact_id",
             "test-definition.json": "test_definition_id",
             "run-manifest.json": "run_id",

@@ -118,7 +118,7 @@ class DependencyBoundaryTests(unittest.TestCase):
     def test_only_build_adapters_use_contracts_from_infrastructure(self) -> None:
         violations = []
         for path in sorted((PACKAGE_ROOT / "infrastructure").glob("*.py")):
-            if path.name in {"build_workspace.py", "metaeditor.py"}:
+            if path.name in {"artifact.py", "build_workspace.py", "metaeditor.py"}:
                 continue
             for module, line in _imports(path):
                 if module == "ea_research_lab.contracts" or module.startswith(
@@ -140,6 +140,19 @@ class DependencyBoundaryTests(unittest.TestCase):
                     self.assertNotIn("metaeditor", source)
                     self.assertNotIn("utf-16", source)
                     self.assertNotIn("exit_code", source)
+
+    def test_artifact_adapter_does_not_finalize_build_or_persist(self) -> None:
+        source = (PACKAGE_ROOT / "infrastructure/artifact.py").read_text(
+            encoding="utf-8"
+        ).lower()
+        forbidden = (
+            "buildoutcome",
+            "build-record:0.2.0",
+            "artifact repository",
+            "database",
+            "persistence",
+        )
+        self.assertEqual([term for term in forbidden if term in source], [])
 
     def test_dependencies_are_approved_and_locked(self) -> None:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))

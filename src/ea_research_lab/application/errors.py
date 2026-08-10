@@ -19,6 +19,7 @@ class ApplicationErrorCode(StrEnum):
     SCHEMA_VALIDATION_FAILED = "schema_validation_failed"
     BUILD_INPUT_INVALID = "build_input_invalid"
     BUILD_PROVIDER_FAILED = "build_provider_failed"
+    ARTIFACT_REJECTED = "artifact_rejected"
 
 
 def _freeze_json(value: object) -> object:

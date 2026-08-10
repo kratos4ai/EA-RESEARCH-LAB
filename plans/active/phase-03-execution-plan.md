@@ -1,6 +1,6 @@
 # Phase 03 — Run & Evidence Pipeline Execution Plan
 
-- Status: Active; M1 closed and M2 implemented pending checkpoint approval
+- Status: Active; M1 and M2 completed; M3 not started
 - Scope: Phase 03 only
 - Baseline: completed Phase 02 at `f63171092910adb4f885895f053172d09d46273b`
 - Runtime: Python `>=3.14,<3.15`

@@ -1,6 +1,6 @@
 # Phase 02 — Build & Artifact Pipeline Execution Plan
 
-- Status: Proposed; implementation not authorized
+- Status: M6 closure verification; M0-M5 completed; Phase 02 completion pending owner approval and a clean checkpoint
 - Scope: Phase 02 only
 - Baseline: contract checkpoint `4182552a9852552f24f6e3a0960c478a739ef7cf`
 - Runtime baseline: Python `>=3.14,<3.15`
@@ -109,7 +109,8 @@ src/ea_research_lab/
 
 schemas/
   metaeditor-build-configuration/
-    v0.1.0.schema.json       # provider-namespaced effective build configuration
+    v0.1.0.schema.json       # original provider configuration contract
+    v0.2.0.schema.json       # configuration with logical external-root mappings
   metaeditor-build-evidence/
     v0.1.0.schema.json       # provider-namespaced bounded invocation evidence
 
@@ -129,7 +130,7 @@ tests/
     include/*.mqh
 ```
 
-The two provider extension schemas are the maximum planned schema addition. They are justified only because existing `SchemaReferencedPayload` values require an exact schema identity for real MetaEditor configuration and evidence. They must remain pre-stable, provider-namespaced, and must not alter any core schema. If implementation can use an already released appropriate provider schema, reuse it instead; none currently exists.
+The provider extension schemas are limited to the two exact configuration versions and one evidence version listed above. They are justified because existing `SchemaReferencedPayload` values require exact schema identities for real MetaEditor configuration and evidence. They remain pre-stable and provider-namespaced and do not alter any core schema.
 
 Test fixture sources must be minimal, strategy-neutral, and compiled only after copying into a disposable workspace. No `.ex5`, provider log, machine path, or real project EA source enters Git.
 
@@ -172,8 +173,8 @@ Existing core schemas remain immutable. Provider-specific extension schemas vali
 
 The final application workflow must execute this order:
 
-1. Validate the provider-neutral build command and effective configuration.
-2. Allocate `BuildRecordId`; do not allocate `ArtifactId` yet.
+1. Validate the provider-neutral build request and effective configuration.
+2. Use the request's allocated `BuildRecordId`; do not allocate `ArtifactId` yet.
 3. Create a new exclusive workspace beneath an explicitly configured workspace root.
 4. Materialize only the declared primary and dependencies using their normalized logical locations and exact bytes.
 5. Materialize supported external inputs into provider staging roots when the provider mapping supports it; fail explicitly for an unsupported mapping.
@@ -297,6 +298,8 @@ Establish an immutable, tested contract baseline for Phase 02 implementation.
 
 ### M1 — Build domain and application boundary
 
+- Status: Completed in checkpoint `f7140ae`
+
 #### Objective
 
 Introduce the minimum provider-neutral Build use-case vocabulary and the `BuildProvider` port without any external provider implementation.
@@ -344,6 +347,8 @@ Introduce the minimum provider-neutral Build use-case vocabulary and the `BuildP
 - exclusive workspace, hashing workflow, provider adapter, candidate handling, record finalization, or provider schemas.
 
 ### M2 — Build workspace and Build Input
+
+- Status: Completed in checkpoint `abcb257`
 
 #### Objective
 
@@ -398,6 +403,8 @@ Materialize a declared exact input set into a safe exclusive workspace and produ
 - include parsing/discovery, MetaEditor, process management, candidate acceptance, durable snapshot retention, or Artifact persistence.
 
 ### M3 — MetaEditor adapter
+
+- Status: Completed in checkpoint `4dd117a`
 
 #### Objective
 
@@ -462,6 +469,8 @@ Implement one evidence-based MetaEditor adapter behind `BuildProvider`, limited 
 
 ### M4 — Candidate Artifact acceptance
 
+- Status: Completed in checkpoint `016810b`
+
 #### Objective
 
 Accept an EX5 only when it is attributable to the current exclusive workspace and its exact bytes have been read and hashed.
@@ -516,6 +525,8 @@ Accept an EX5 only when it is attributable to the current exclusive workspace an
 - end-to-end orchestration, Artifact storage/publication, retention, ExecutionProvider, or run use.
 
 ### M5 — End-to-end build workflow
+
+- Status: Completed in checkpoint `208ffe9`
 
 #### Objective
 
@@ -574,6 +585,8 @@ Compose M1–M4 into one application use case with explicit context, safe failur
 
 ### M6 — Enforcement and Phase 02 closure
 
+- Status: Closure verification complete; pending owner approval and clean checkpoint
+
 #### Objective
 
 Prove the Build and Artifact boundary is reliable, provider-isolated, contract-conformant, and ready to become an input to later ExecutionProvider planning.
@@ -624,6 +637,17 @@ Prove the Build and Artifact boundary is reliable, provider-isolated, contract-c
 #### Out of scope
 
 - ExecutionProvider and every later roadmap capability.
+
+#### Verified non-blocking limitations
+
+- dependency discovery completeness is not guaranteed;
+- interactive or reused MetaEditor behavior remains untested;
+- output redirection remains unverified;
+- byte-for-byte deterministic EX5 output remains untested;
+- provider behavior is validated only against MetaEditor `5.0.0.6104` in the observed direct-compile mode;
+- process-tree behavior for larger or project-mode builds remains unverified;
+- direct compilation supports only the empirically proven external-root scope;
+- persistence and long-term retention of source and Artifact bytes remain deferred.
 
 ## 12. Risk register
 
@@ -681,6 +705,4 @@ Phase 02 is complete only when all are true:
 
 ## 15. Approval and execution boundary
 
-This document authorizes nothing by itself. After review and approval, the first implementation milestone should be **M1 — Build domain and application boundary**. M1 must stop before workspace materialization or MetaEditor code. Each later milestone requires the prior milestone's acceptance and Git checkpoint.
-
-No Phase 02 runtime implementation was performed while creating this plan.
+M0-M5 are implemented and checkpointed. M6 contains enforcement and documentation closure only. Phase 02 may be marked completed after the owner approves M6 and creates a clean closure checkpoint. Phase 03 planning and implementation remain unauthorized.

@@ -33,12 +33,8 @@ from ea_research_lab.infrastructure.metaeditor import (
 
 
 ROOT = Path(__file__).resolve().parents[2]
-METAEDITOR = Path(
-    os.environ.get(
-        "EA_RESEARCH_LAB_METAEDITOR",
-        r"C:\Program Files\Ava Trade MT5 Terminal\MetaEditor64.exe",
-    )
-)
+_METAEDITOR_PATH = os.environ.get("EA_RESEARCH_LAB_METAEDITOR")
+METAEDITOR = Path(_METAEDITOR_PATH) if _METAEDITOR_PATH else None
 MQL5_INCLUDE = ROOT.parent.parent / "Include"
 _ENVIRONMENT_KEYS = (
     "SystemRoot",
@@ -71,8 +67,8 @@ def _plain(value: object) -> object:
 class MetaEditorBuildIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        if not METAEDITOR.is_file():
-            raise unittest.SkipTest("approved MetaEditor executable is unavailable")
+        if METAEDITOR is None or not METAEDITOR.is_file():
+            raise unittest.SkipTest("approved MetaEditor executable is not configured")
         processes = subprocess.run(
             [
                 "tasklist",

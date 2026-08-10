@@ -20,3 +20,5 @@ The referenced Build Record owns the build outcome. An Artifact Manifest exists 
 Build Record `0.2.0` also owns the content-addressed Build Input Manifest reference. Artifact Manifest `0.1.0` continues to reference the Build Record and does not duplicate Build Input Identity. Reproducibility is assessed separately from these immutable build and artifact facts.
 
 An Artifact must never be silently replaced under the same identity.
+
+Phase 02 returns accepted immutable Artifact bytes and their validated manifest in memory. It does not claim durable retention or implement an Artifact repository; those responsibilities remain deferred to a later Data Plane phase.

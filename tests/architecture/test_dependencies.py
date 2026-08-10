@@ -154,6 +154,22 @@ class DependencyBoundaryTests(unittest.TestCase):
                     self.assertNotIn("utf-16", source)
                     self.assertNotIn("exit_code", source)
 
+    def test_external_process_and_filesystem_ownership_stays_at_adapters(self) -> None:
+        forbidden_core_imports = {"os", "pathlib", "shutil", "subprocess", "tempfile"}
+        violations = []
+        for boundary in ("domain", "application"):
+            for path in sorted((PACKAGE_ROOT / boundary).glob("*.py")):
+                for module, line in _imports(path):
+                    if module.split(".", 1)[0] in forbidden_core_imports:
+                        violations.append(f"{path.relative_to(ROOT)}:{line}: {module}")
+        for path in sorted((PACKAGE_ROOT / "infrastructure").glob("*.py")):
+            if path.name == "metaeditor.py":
+                continue
+            for module, line in _imports(path):
+                if module.split(".", 1)[0] == "subprocess":
+                    violations.append(f"{path.relative_to(ROOT)}:{line}: {module}")
+        self.assertEqual(violations, [])
+
     def test_artifact_adapter_does_not_finalize_build_or_persist(self) -> None:
         source = (PACKAGE_ROOT / "infrastructure/artifact.py").read_text(
             encoding="utf-8"

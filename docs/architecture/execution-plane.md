@@ -29,8 +29,7 @@ Compilation must also be isolated:
 
 ```text
 BuildProvider
-  build(source_revision, configuration)
-  collect_artifact()
+  build(BuildRequest) -> BuildProviderObservation
 ```
 
 Initial provider:
@@ -38,6 +37,12 @@ Initial provider:
 ```text
 MetaEditorBuildProvider
 ```
+
+The provider reports bounded observed facts and provider-namespaced evidence. It does not determine the platform Build outcome, allocate an Artifact identity, or create a Build Record. Application orchestration declares success only after the candidate from the current exclusive workspace passes Artifact acceptance and exact-byte hashing.
+
+The implemented MetaEditor adapter compiles only captured inputs materialized in an exclusive workspace. External inputs use stable logical root aliases; the provider-specific include view is derived from workspace-owned materialized bytes. Physical mappings, Windows invocation grammar, exit codes, UTF-16LE logs, diagnostics, and candidate paths remain adapter concerns.
+
+This support is limited to the direct-compile behavior observed for MetaEditor `5.0.0.6104`. Dependency discovery is not claimed complete, and interactive/reused instances, output redirection, deterministic EX5 output, and larger/project-mode process trees remain unverified.
 
 ## Execution outputs
 

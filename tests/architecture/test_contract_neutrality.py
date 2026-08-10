@@ -275,6 +275,19 @@ class ContractNeutralityTests(unittest.TestCase):
         self._assert_schema_ref(evidence_object["properties"]["payload_schema"])
         self.assertNotIn("payload", evidence_object["properties"])
 
+    def test_metaeditor_contracts_remain_provider_namespaced(self) -> None:
+        for identity in (
+            ("metaeditor-build-configuration", "0.1.0"),
+            ("metaeditor-build-configuration", "0.2.0"),
+            ("metaeditor-build-evidence", "0.1.0"),
+        ):
+            with self.subTest(schema=identity):
+                self.assertTrue(identity[0].startswith("metaeditor-"))
+                self.assertEqual(
+                    self.schemas[identity]["properties"]["provider"]["const"],
+                    "metaeditor",
+                )
+
     def _assert_opaque_payload(
         self,
         definition: dict[str, object],

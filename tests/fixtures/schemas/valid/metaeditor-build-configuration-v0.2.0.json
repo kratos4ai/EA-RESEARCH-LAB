@@ -1,0 +1,14 @@
+{
+  "schema_name": "metaeditor-build-configuration",
+  "schema_version": "0.2.0",
+  "provider": "metaeditor",
+  "executable_path": "C:\\Program Files\\Ava Trade MT5 Terminal\\MetaEditor64.exe",
+  "executable_digest": "50f47217c681e022924e905a2296144a7712dcf07f27bcfc108bf972aa20214c",
+  "environment": {
+    "SystemRoot": "C:\\Windows"
+  },
+  "external_roots": {
+    "mql5-standard": "C:\\Users\\researcher\\MQL5\\Include"
+  },
+  "max_log_bytes": 1048576
+}

@@ -131,6 +131,16 @@ EXPECTED_PROPERTIES = {
         "environment",
         "max_log_bytes",
     },
+    ("metaeditor-build-configuration", "0.2.0"): {
+        "schema_name",
+        "schema_version",
+        "provider",
+        "executable_path",
+        "executable_digest",
+        "environment",
+        "external_roots",
+        "max_log_bytes",
+    },
     ("metaeditor-build-evidence", "0.1.0"): {
         "schema_name",
         "schema_version",

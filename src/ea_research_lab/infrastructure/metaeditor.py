@@ -10,12 +10,15 @@ import re
 import subprocess
 import time
 from collections.abc import Mapping
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass, field
+from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 
-from ea_research_lab.application.build import BuildRequest
-from ea_research_lab.application.errors import ApplicationErrorCode
+from ea_research_lab.application.build import BuildAttempt, BuildRequest
+from ea_research_lab.application.errors import (
+    ApplicationError,
+    ApplicationErrorCode,
+)
 from ea_research_lab.contracts import ContractValidationError, validate_document
 from ea_research_lab.domain.build import BuildProviderObservation
 from ea_research_lab.domain.provenance import SchemaReferencedPayload
@@ -24,19 +27,28 @@ from ea_research_lab.domain.values import (
     SchemaRef,
     SchemaVersion,
     Sha256Digest,
+    UtcTimestamp,
+)
+from ea_research_lab.infrastructure.artifact import (
+    ArtifactAcceptanceError,
+    accept_candidate,
 )
 from ea_research_lab.infrastructure.build_workspace import (
     BuildWorkspaceError,
     MaterializedBuildWorkspace,
+    materialize_build_workspace,
 )
 from ea_research_lab.infrastructure.logging import log_event
 
 
 _CONFIGURATION_REF = SchemaRef(
-    SchemaName("metaeditor-build-configuration"), SchemaVersion(0, 1, 0)
+    SchemaName("metaeditor-build-configuration"), SchemaVersion(0, 2, 0)
 )
 _EVIDENCE_REF = SchemaRef(
     SchemaName("metaeditor-build-evidence"), SchemaVersion(0, 1, 0)
+)
+_BUILD_INPUT_MANIFEST_REF = SchemaRef(
+    SchemaName("build-input-manifest"), SchemaVersion(0, 1, 0)
 )
 _RESULT_PATTERN = re.compile(
     r"^Result:\s*(\d+)\s+errors?,\s*(\d+)\s+warnings?\b", re.MULTILINE
@@ -57,6 +69,7 @@ _ENVIRONMENT_KEYS = (
     "HOMEPATH",
 )
 _TERMINATION_GRACE_SECONDS = 1.0
+_EXTERNAL_ROOT_PATTERN = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*")
 
 
 class MetaEditorAdapterError(ValueError):
@@ -73,6 +86,7 @@ class MetaEditorConfiguration:
     executable_digest: Sha256Digest
     environment: Mapping[str, str]
     max_log_bytes: int = 1_048_576
+    external_roots: Mapping[str, Path] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not isinstance(self.executable, Path) or not isinstance(
@@ -93,21 +107,42 @@ class MetaEditorConfiguration:
             raise MetaEditorAdapterError("MetaEditor environment is invalid.")
         if type(self.max_log_bytes) is not int or self.max_log_bytes < 2:
             raise MetaEditorAdapterError("MetaEditor log limit is invalid.")
+        if not isinstance(self.external_roots, Mapping):
+            raise MetaEditorAdapterError("MetaEditor external roots are invalid.")
+        external_roots = dict(self.external_roots)
+        for alias, root in external_roots.items():
+            if (
+                not isinstance(alias, str)
+                or _EXTERNAL_ROOT_PATTERN.fullmatch(alias) is None
+                or not isinstance(root, Path)
+                or not root.is_absolute()
+                or _is_link_or_junction(root)
+                or not root.is_dir()
+            ):
+                raise MetaEditorAdapterError("MetaEditor external roots are invalid.")
         object.__setattr__(
             self,
             "environment",
             MappingProxyType(dict(sorted(environment.items()))),
+        )
+        object.__setattr__(
+            self,
+            "external_roots",
+            MappingProxyType(dict(sorted(external_roots.items()))),
         )
 
     @property
     def payload(self) -> SchemaReferencedPayload:
         value = {
             "schema_name": "metaeditor-build-configuration",
-            "schema_version": "0.1.0",
+            "schema_version": "0.2.0",
             "provider": "metaeditor",
             "executable_path": str(self.executable),
             "executable_digest": str(self.executable_digest),
             "environment": dict(self.environment),
+            "external_roots": {
+                alias: str(root) for alias, root in self.external_roots.items()
+            },
             "max_log_bytes": self.max_log_bytes,
         }
         _validate_provider_document(value)
@@ -142,10 +177,7 @@ class MetaEditorBuildProvider:
 
         executable = self._validated_executable()
         primary = self._validated_primary()
-        if self._workspace.external_roots:
-            raise MetaEditorAdapterError(
-                "External input mapping is not verified for this adapter."
-            )
+        include_root = self._external_include_root()
         try:
             self._workspace.verify_integrity()
         except BuildWorkspaceError as error:
@@ -157,7 +189,7 @@ class MetaEditorBuildProvider:
             raise MetaEditorAdapterError("Build workspace contains stale provider output.")
 
         executable_version = _read_windows_file_version(executable)
-        argv = _metaeditor_argv(executable, primary)
+        argv = _metaeditor_argv(executable, primary, include_root)
         if self._logger is not None:
             log_event(
                 self._logger,
@@ -273,6 +305,47 @@ class MetaEditorBuildProvider:
             raise MetaEditorAdapterError("MetaEditor executable identity changed.")
         return resolved
 
+    def _external_include_root(self) -> Path | None:
+        roots = self._workspace.external_roots
+        if not roots:
+            return None
+        # ponytail: support a staged union only after a second-root use case is observed.
+        if len(roots) != 1:
+            raise MetaEditorAdapterError(
+                "MetaEditor supports one external root per direct build."
+            )
+        alias, staged_root = next(iter(roots.items()))
+        if alias not in self._configuration.external_roots:
+            raise MetaEditorAdapterError("External root mapping is unavailable.")
+        try:
+            resolved = staged_root.resolve(strict=True)
+        except OSError as error:
+            raise MetaEditorAdapterError("External root staging is unavailable.") from error
+        if (
+            not resolved.is_relative_to(self._workspace.root)
+            or _is_link_or_junction(resolved)
+            or not resolved.is_dir()
+        ):
+            raise MetaEditorAdapterError("External root staging is invalid.")
+        include_root = resolved / "Include"
+        try:
+            include_root.mkdir()
+            for member in self._workspace.members:
+                if member.root != alias:
+                    continue
+                target = include_root.joinpath(
+                    *PurePosixPath(member.logical_path).parts
+                )
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if not target.resolve(strict=False).is_relative_to(resolved):
+                    raise MetaEditorAdapterError(
+                        "External input staging escapes its root."
+                    )
+                os.link(member.physical_path, target, follow_symlinks=False)
+        except (FileExistsError, OSError) as error:
+            raise MetaEditorAdapterError("External inputs could not be staged.") from error
+        return resolved
+
     def _validated_primary(self) -> Path:
         if not self._workspace.members:
             raise MetaEditorAdapterError("Build workspace has no primary input.")
@@ -335,13 +408,129 @@ class MetaEditorBuildProvider:
         )
 
 
+def execute_metaeditor_build_attempt(
+    request: BuildRequest,
+    *,
+    configuration: MetaEditorConfiguration,
+    workspace_parent: Path,
+    logical_name: str,
+    artifact_version: str,
+    built_at: UtcTimestamp,
+    logger: logging.Logger | None = None,
+) -> BuildAttempt:
+    """Run M2 through M4 once without owning the final Build outcome."""
+
+    build_input: SchemaReferencedPayload | None = None
+    observation: BuildProviderObservation | None = None
+    try:
+        with materialize_build_workspace(request, workspace_parent) as workspace:
+            build_input = SchemaReferencedPayload(
+                _BUILD_INPUT_MANIFEST_REF, workspace.manifest
+            )
+            if logger is not None:
+                log_event(
+                    logger,
+                    logging.INFO,
+                    "build.input.materialized",
+                    "Build input materialized.",
+                    context=request.context,
+                    build_record_id=request.build_record_id,
+                )
+            observation = MetaEditorBuildProvider(
+                configuration, workspace, logger=logger
+            ).build(request)
+            if not observation.candidate_available:
+                return _failed_attempt(
+                    request,
+                    ApplicationErrorCode.BUILD_PROVIDER_FAILED,
+                    "Build provider did not produce an acceptable candidate.",
+                    build_input,
+                    observation,
+                    logger=logger,
+                )
+            acceptance = accept_candidate(
+                workspace=workspace,
+                request=request,
+                observation=observation,
+                logical_name=logical_name,
+                artifact_version=artifact_version,
+                built_at=built_at,
+                logger=logger,
+            )
+            return BuildAttempt(build_input, observation, acceptance, None)
+    except BuildWorkspaceError as error:
+        return _failed_attempt(
+            request,
+            ApplicationErrorCode.BUILD_INPUT_INVALID,
+            "Build input could not be materialized or retained.",
+            build_input,
+            observation,
+            cause=error,
+            logger=logger,
+        )
+    except MetaEditorAdapterError as error:
+        return _failed_attempt(
+            request,
+            ApplicationErrorCode.BUILD_PROVIDER_FAILED,
+            "Build provider failed.",
+            build_input,
+            observation,
+            cause=error,
+            logger=logger,
+        )
+    except ArtifactAcceptanceError as error:
+        return _failed_attempt(
+            request,
+            ApplicationErrorCode.ARTIFACT_REJECTED,
+            "Build candidate was rejected.",
+            build_input,
+            observation,
+            cause=error,
+            logger=logger,
+        )
+
+
+def _failed_attempt(
+    request: BuildRequest,
+    code: ApplicationErrorCode,
+    message: str,
+    build_input: SchemaReferencedPayload | None,
+    observation: BuildProviderObservation | None,
+    *,
+    cause: BaseException | None = None,
+    logger: logging.Logger | None = None,
+) -> BuildAttempt:
+    failure = ApplicationError(
+        code,
+        message,
+        request_id=request.context.request_id,
+        cause=cause,
+    )
+    if logger is not None:
+        log_event(
+            logger,
+            logging.ERROR,
+            "build.failed",
+            "Build failed.",
+            context=request.context,
+            build_record_id=request.build_record_id,
+            error=failure,
+        )
+    return BuildAttempt(build_input, observation, None, failure)
+
+
 def _metaeditor_argv(
-    executable: Path, primary: Path
-) -> tuple[str, str, str]:
-    for path in (executable, primary):
+    executable: Path, primary: Path, include_root: Path | None = None
+) -> tuple[str, ...]:
+    for path in (executable, primary, include_root):
+        if path is None:
+            continue
         if '"' in str(path):
             raise MetaEditorAdapterError("MetaEditor command path is invalid.")
-    return str(executable), f'/compile:"{primary}"', "/log"
+    argv = [str(executable), f'/compile:"{primary}"', "/log"]
+    if include_root is not None:
+        argv.append(f'/include:"{include_root}"')
+    return tuple(argv)
 
 
 def _windows_command_line(argv: tuple[str, ...]) -> str:
@@ -377,6 +566,15 @@ def _uses_only_declared_inputs(
     text: str, workspace: MaterializedBuildWorkspace
 ) -> bool:
     declared = {_path_key(member.physical_path) for member in workspace.members}
+    declared.update(
+        _path_key(
+            workspace.external_roots[member.root]
+            / "Include"
+            / Path(*PurePosixPath(member.logical_path).parts)
+        )
+        for member in workspace.members
+        if member.root is not None
+    )
     observed = {
         _path_key(Path(match.group(1).strip()))
         for match in _INCLUDE_PATTERN.finditer(text)
@@ -390,6 +588,12 @@ def _path_key(path: Path) -> str:
     except OSError:
         resolved = path.absolute()
     return os.path.normcase(str(resolved))
+
+
+def _is_link_or_junction(path: Path) -> bool:
+    return path.is_symlink() or bool(
+        getattr(os.path, "isjunction", lambda candidate: False)(path)
+    )
 
 
 def _candidate_state(directory: Path, expected: Path) -> tuple[bool, bool]:

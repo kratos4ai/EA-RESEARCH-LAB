@@ -50,6 +50,9 @@ SUPPORTED_SCHEMA_PATHS: Mapping[SchemaRef, Path] = MappingProxyType(
         _ref("metaeditor-build-configuration", "0.1.0"): Path(
             "metaeditor-build-configuration/v0.1.0.schema.json"
         ),
+        _ref("metaeditor-build-configuration", "0.2.0"): Path(
+            "metaeditor-build-configuration/v0.2.0.schema.json"
+        ),
         _ref("metaeditor-build-evidence", "0.1.0"): Path(
             "metaeditor-build-evidence/v0.1.0.schema.json"
         ),

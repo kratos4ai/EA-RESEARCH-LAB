@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import tempfile
 import unittest
 from contextlib import contextmanager
@@ -26,7 +27,10 @@ from ea_research_lab.domain.identifiers import (
     RequestId,
 )
 from ea_research_lab.domain.values import Sha256Digest, SourceRevision
-from ea_research_lab.infrastructure.build_workspace import materialize_build_workspace
+from ea_research_lab.infrastructure.build_workspace import (
+    load_source_input,
+    materialize_build_workspace,
+)
 from ea_research_lab.infrastructure.config import Settings
 from ea_research_lab.infrastructure.logging import configure_logging
 from ea_research_lab.infrastructure.metaeditor import (
@@ -111,17 +115,25 @@ class MetaEditorAdapterTests(unittest.TestCase):
         dependencies: tuple[BuildSourceInput, ...] = (),
         logical_primary: str = "Probe Main.mq5",
         max_log_bytes: int = 1_048_576,
+        map_external_root: bool = False,
+        external_root: Path | None = None,
         logger: logging.Logger | None = None,
     ):
         with tempfile.TemporaryDirectory(prefix="metaeditor test café ") as parent_name:
             parent = Path(parent_name)
             executable = parent / "MetaEditor64.exe"
             executable.write_bytes(b"fake executable identity")
+            source_root = external_root or parent / "source-include"
+            if map_external_root and external_root is None:
+                source_root.mkdir()
             configuration = MetaEditorConfiguration(
                 executable,
                 Sha256Digest(hashlib.sha256(executable.read_bytes()).hexdigest()),
                 {},
                 max_log_bytes=max_log_bytes,
+                external_roots=(
+                    {"mql5-standard": source_root} if map_external_root else {}
+                ),
             )
             specification = BuildSourceSpecification(
                 BuildSourceInput(
@@ -197,6 +209,9 @@ class MetaEditorAdapterTests(unittest.TestCase):
             self.assertEqual(
                 configuration.payload.value["executable_path"], str(executable)
             )
+            self.assertEqual(
+                configuration.payload.value["schema_version"], "0.2.0"
+            )
             with self.assertRaises(TypeError):
                 configuration.environment["PATH"] = "changed"
             with self.assertRaises(MetaEditorAdapterError):
@@ -207,6 +222,70 @@ class MetaEditorAdapterTests(unittest.TestCase):
                 )
             with self.assertRaises(MetaEditorAdapterError):
                 MetaEditorConfiguration(executable, digest, {}, max_log_bytes=1)
+
+    def test_declared_external_root_uses_only_staged_include_argv(self) -> None:
+        with tempfile.TemporaryDirectory() as source_name:
+            source_root = Path(source_name)
+            original = source_root / "Arrays" / "Array.mqh"
+            original.parent.mkdir()
+            original.write_bytes(b"captured external\n")
+            external = load_source_input(
+                scope=BuildInputScope.EXTERNAL,
+                path="Arrays/Array.mqh",
+                source_path=original,
+                root="mql5-standard",
+            )
+            with self._build_setup(
+                dependencies=(external,),
+                map_external_root=True,
+                external_root=source_root,
+            ) as setup:
+                workspace = setup[2]
+                snapshot = workspace.members[1].physical_path
+                staged = workspace.external_roots["mql5-standard"]
+                provider_view = staged / "Include" / "Arrays" / "Array.mqh"
+                scenario = _PopenScenario(
+                    log=_utf16_log(0, 0, provider_view), candidate=True
+                )
+
+                def start_process(command: object, **kwargs: object):
+                    self.assertEqual(provider_view.read_bytes(), snapshot.read_bytes())
+                    original.write_bytes(b"changed after provider view\n")
+                    return scenario(command, **kwargs)
+
+                with (
+                    patch(
+                        "ea_research_lab.infrastructure.metaeditor.subprocess.Popen",
+                        side_effect=start_process,
+                    ),
+                    patch(
+                        "ea_research_lab.infrastructure.metaeditor._read_windows_file_version",
+                        return_value="5.0.0.6104",
+                    ),
+                ):
+                    observation = setup[0].build(setup[1])
+
+                command = scenario.calls[0][0]
+                self.assertEqual(
+                    original.read_bytes(), b"changed after provider view\n"
+                )
+                self.assertEqual(snapshot.read_bytes(), b"captured external\n")
+                self.assertEqual(provider_view.read_bytes(), b"captured external\n")
+                self.assertNotEqual(
+                    os.stat(original).st_ino, os.stat(snapshot).st_ino
+                )
+                self.assertEqual(
+                    os.stat(provider_view).st_ino,
+                    os.stat(snapshot).st_ino,
+                )
+                workspace.verify_integrity()
+                self.assertEqual(
+                    workspace.manifest["dependencies"][0]["content_digest"],
+                    hashlib.sha256(b"captured external\n").hexdigest(),
+                )
+
+        self.assertIn(f'/include:"{staged.resolve()}"', command)
+        self.assertTrue(observation.candidate_available)
 
     def test_log_verdict_not_exit_code_controls_candidate_availability(self) -> None:
         cases = (

@@ -37,6 +37,7 @@ class DependencyBoundaryTests(unittest.TestCase):
             PACKAGE_ROOT / "application",
             internal_prefixes=(
                 "ea_research_lab.application",
+                "ea_research_lab.contracts",
                 "ea_research_lab.domain",
             ),
         )
@@ -50,6 +51,18 @@ class DependencyBoundaryTests(unittest.TestCase):
             ),
             external_modules=("jsonschema", "referencing"),
         )
+
+    def test_only_build_orchestration_uses_contracts_from_application(self) -> None:
+        violations = []
+        for path in sorted((PACKAGE_ROOT / "application").glob("*.py")):
+            if path.name == "build.py":
+                continue
+            for module, line in _imports(path):
+                if module == "ea_research_lab.contracts" or module.startswith(
+                    "ea_research_lab.contracts."
+                ):
+                    violations.append(f"{path.relative_to(ROOT)}:{line}: {module}")
+        self.assertEqual(violations, [])
 
     def test_infrastructure_imports_only_approved_inward_modules(self) -> None:
         self._assert_imports(
@@ -151,6 +164,22 @@ class DependencyBoundaryTests(unittest.TestCase):
             "artifact repository",
             "database",
             "persistence",
+        )
+        self.assertEqual([term for term in forbidden if term in source], [])
+
+    def test_build_workflow_does_not_introduce_future_capabilities(self) -> None:
+        source = (PACKAGE_ROOT / "application/build.py").read_text(
+            encoding="utf-8"
+        ).lower()
+        forbidden = (
+            "executionprovider",
+            "strategy tester",
+            "artifact registry",
+            "database",
+            "platform api",
+            "mcp",
+            "workflow engine",
+            "provider registry",
         )
         self.assertEqual([term for term in forbidden if term in source], [])
 

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:metaeditor-build-configuration:0.2.0",
+  "title": "MetaEditor Build Configuration 0.2.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "provider",
+    "executable_path",
+    "executable_digest",
+    "environment",
+    "external_roots",
+    "max_log_bytes"
+  ],
+  "properties": {
+    "schema_name": {"const": "metaeditor-build-configuration"},
+    "schema_version": {"const": "0.2.0"},
+    "provider": {"const": "metaeditor"},
+    "executable_path": {"type": "string", "minLength": 1},
+    "executable_digest": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "SystemRoot": {"type": "string", "minLength": 1},
+        "WINDIR": {"type": "string", "minLength": 1},
+        "PATH": {"type": "string", "minLength": 1},
+        "TEMP": {"type": "string", "minLength": 1},
+        "TMP": {"type": "string", "minLength": 1},
+        "USERPROFILE": {"type": "string", "minLength": 1},
+        "APPDATA": {"type": "string", "minLength": 1},
+        "LOCALAPPDATA": {"type": "string", "minLength": 1},
+        "PROGRAMDATA": {"type": "string", "minLength": 1},
+        "COMSPEC": {"type": "string", "minLength": 1},
+        "HOMEDRIVE": {"type": "string", "minLength": 1},
+        "HOMEPATH": {"type": "string", "minLength": 1}
+      }
+    },
+    "external_roots": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "max_log_bytes": {"type": "integer", "minimum": 2}
+  }
+}

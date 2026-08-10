@@ -12,6 +12,11 @@ class BuildOutcome(StrEnum):
     FAILED = "failed"
 
 
+class BuildInputScope(StrEnum):
+    WORKSPACE = "workspace"
+    EXTERNAL = "external"
+
+
 @dataclass(frozen=True, slots=True)
 class BuildProviderObservation:
     """Opaque provider evidence that is not a final platform outcome."""

@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Protocol
 
 from ea_research_lab.application.context import RequestContext
-from ea_research_lab.domain.build import BuildProviderObservation
+from ea_research_lab.domain.build import BuildInputScope, BuildProviderObservation
 from ea_research_lab.domain.errors import InvalidValueError
 from ea_research_lab.domain.identifiers import (
     BuildRecordId,
@@ -16,13 +16,69 @@ from ea_research_lab.domain.values import SourceRevision
 
 
 @dataclass(frozen=True, slots=True)
+class BuildSourceInput:
+    """Exact source bytes under one provider-neutral logical location."""
+
+    scope: BuildInputScope
+    path: str
+    content: bytes
+    root: str | None = None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.scope, BuildInputScope):
+            raise InvalidValueError("Build source scope is invalid.")
+        if not isinstance(self.path, str) or not self.path:
+            raise InvalidValueError("Build source path must be non-empty.")
+        if not isinstance(self.content, bytes):
+            raise InvalidValueError("Build source content must be immutable bytes.")
+        if self.scope is BuildInputScope.WORKSPACE and self.root is not None:
+            raise InvalidValueError("Workspace build source cannot declare a root.")
+        if self.scope is BuildInputScope.EXTERNAL and (
+            not isinstance(self.root, str)
+            or not self.root
+            or self.root.strip() != self.root
+        ):
+            raise InvalidValueError(
+                "External build source requires a logical root alias."
+            )
+
+
+@dataclass(frozen=True, slots=True)
+class BuildSourceSpecification:
+    """One primary source and its explicitly declared dependency set."""
+
+    primary: BuildSourceInput
+    dependencies: tuple[BuildSourceInput, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.primary, BuildSourceInput) or (
+            self.primary.scope is not BuildInputScope.WORKSPACE
+        ):
+            raise InvalidValueError("Primary build source must use workspace scope.")
+        try:
+            dependencies = tuple(self.dependencies)
+        except TypeError as error:
+            raise InvalidValueError(
+                "Build dependencies must be an ordered collection."
+            ) from error
+        if any(
+            not isinstance(dependency, BuildSourceInput)
+            for dependency in dependencies
+        ):
+            raise InvalidValueError(
+                "Build dependencies must contain BuildSourceInput values."
+            )
+        object.__setattr__(self, "dependencies", dependencies)
+
+
+@dataclass(frozen=True, slots=True)
 class BuildRequest:
     """Build intent before provider-specific materialization or invocation."""
 
     context: RequestContext
     build_record_id: BuildRecordId
     source_revision: SourceRevision
-    source_specification: SchemaReferencedPayload
+    source_specification: BuildSourceSpecification
     build_configuration_id: EnvironmentConfigurationId
     build_configuration: SchemaReferencedPayload
     timeout: timedelta
@@ -34,7 +90,7 @@ class BuildRequest:
             (self.source_revision, SourceRevision, "SourceRevision"),
             (
                 self.source_specification,
-                SchemaReferencedPayload,
+                BuildSourceSpecification,
                 "source specification",
             ),
             (

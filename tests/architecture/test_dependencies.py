@@ -56,6 +56,7 @@ class DependencyBoundaryTests(unittest.TestCase):
             PACKAGE_ROOT / "infrastructure",
             internal_prefixes=(
                 "ea_research_lab.application",
+                "ea_research_lab.contracts",
                 "ea_research_lab.domain",
                 "ea_research_lab.infrastructure",
             ),
@@ -95,6 +96,36 @@ class DependencyBoundaryTests(unittest.TestCase):
                     [term for term in forbidden if term in source],
                     [],
                 )
+
+    def test_build_workspace_excludes_provider_execution_semantics(self) -> None:
+        source = (PACKAGE_ROOT / "infrastructure/build_workspace.py").read_text(
+            encoding="utf-8"
+        ).lower()
+        forbidden = (
+            "metaeditor",
+            "subprocess",
+            ".ex5",
+            "exit_code",
+            "compiler_log",
+            "strategy",
+            "signal",
+            "symbol",
+            "timeframe",
+            "indicator",
+        )
+        self.assertEqual([term for term in forbidden if term in source], [])
+
+    def test_only_build_workspace_uses_contracts_from_infrastructure(self) -> None:
+        violations = []
+        for path in sorted((PACKAGE_ROOT / "infrastructure").glob("*.py")):
+            if path.name == "build_workspace.py":
+                continue
+            for module, line in _imports(path):
+                if module == "ea_research_lab.contracts" or module.startswith(
+                    "ea_research_lab.contracts."
+                ):
+                    violations.append(f"{path.relative_to(ROOT)}:{line}: {module}")
+        self.assertEqual(violations, [])
 
     def test_dependencies_are_approved_and_locked(self) -> None:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))

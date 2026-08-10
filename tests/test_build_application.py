@@ -7,11 +7,17 @@ from datetime import timedelta
 from ea_research_lab.application.build import (
     BuildProvider,
     BuildRequest,
+    BuildSourceInput,
+    BuildSourceSpecification,
     request_build,
 )
 from ea_research_lab.application.context import RequestContext
 from ea_research_lab.application.identity import new_entity_id
-from ea_research_lab.domain.build import BuildOutcome, BuildProviderObservation
+from ea_research_lab.domain.build import (
+    BuildInputScope,
+    BuildOutcome,
+    BuildProviderObservation,
+)
 from ea_research_lab.domain.errors import InvalidValueError
 from ea_research_lab.domain.identifiers import (
     BuildRecordId,
@@ -40,7 +46,13 @@ def _request() -> BuildRequest:
         context=RequestContext(new_entity_id(RequestId), "test-client"),
         build_record_id=new_entity_id(BuildRecordId),
         source_revision=SourceRevision("git", "repository", "revision", True),
-        source_specification=_payload("build-source-specification"),
+        source_specification=BuildSourceSpecification(
+            primary=BuildSourceInput(
+                BuildInputScope.WORKSPACE,
+                "Experts/Main.mq5",
+                b"primary\n",
+            )
+        ),
         build_configuration_id=new_entity_id(EnvironmentConfigurationId),
         build_configuration=_payload("build-configuration"),
         timeout=timedelta(seconds=30),
@@ -77,8 +89,8 @@ class BuildBoundaryTests(unittest.TestCase):
             request.timeout = timedelta(seconds=1)
         with self.assertRaises(TypeError):
             request.build_configuration.value["new"] = "value"
-        with self.assertRaises(TypeError):
-            request.source_specification.value["opaque"]["key"] = "changed"
+        with self.assertRaises(FrozenInstanceError):
+            request.source_specification.primary.content += b"changed"
 
     def test_request_validates_required_types_and_positive_timeout(self) -> None:
         valid = _request()
@@ -102,6 +114,41 @@ class BuildBoundaryTests(unittest.TestCase):
                 InvalidValueError
             ):
                 BuildRequest(**values)
+
+    def test_source_specification_is_provider_neutral_and_immutable(self) -> None:
+        dependency = BuildSourceInput(
+            BuildInputScope.EXTERNAL,
+            "Include/Dependency.mqh",
+            b"dependency\n",
+            root="stable-root",
+        )
+        specification = BuildSourceSpecification(
+            primary=BuildSourceInput(
+                BuildInputScope.WORKSPACE,
+                "Experts/Main.mq5",
+                b"primary\n",
+            ),
+            dependencies=[dependency],
+        )
+
+        self.assertEqual(specification.dependencies, (dependency,))
+        with self.assertRaises(FrozenInstanceError):
+            specification.dependencies = ()
+        with self.assertRaises(InvalidValueError):
+            BuildSourceInput(
+                BuildInputScope.WORKSPACE,
+                "Experts/Main.mq5",
+                b"primary\n",
+                root="not-allowed",
+            )
+        with self.assertRaises(InvalidValueError):
+            BuildSourceInput(
+                BuildInputScope.EXTERNAL,
+                "Include/Dependency.mqh",
+                b"dependency\n",
+            )
+        with self.assertRaises(InvalidValueError):
+            BuildSourceSpecification(primary=dependency)
 
     def test_fake_provider_is_substitutable_without_infrastructure(self) -> None:
         request = _request()

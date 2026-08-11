@@ -81,4 +81,8 @@ Unavailable or provider-controlled metadata must be recorded as an explicit repr
 
 ## Collection boundary
 
-Execution may emit raw objects incrementally while a run is active. Once persisted, each raw object is immutable. The Data Plane owns storage validation and sealing the manifest that identifies a collection outcome; the Execution Plane does not rewrite sealed evidence.
+Execution may emit raw objects incrementally while a run is active. The
+application boundary owns the terminal collection outcome and seals the
+manifest after execution reaches a terminal state. Once persisted, each raw
+object and sealed manifest is immutable; the Data Plane owns storage validation
+and must not redefine or rewrite the sealed evidence set.

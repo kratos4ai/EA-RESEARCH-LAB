@@ -4,15 +4,18 @@ import hashlib
 import os
 import subprocess
 import unittest
+from collections.abc import Mapping
 from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
 import ea_research_lab.infrastructure.mt5_strategy_tester as mt5_adapter
 from ea_research_lab.application.context import RequestContext
-from ea_research_lab.application.execution import ExecutionRequest, request_execution
+from ea_research_lab.application.execution import ExecutionRequest, execute_run
 from ea_research_lab.application.identity import new_entity_id
+from ea_research_lab.contracts import validate_document
 from ea_research_lab.domain.build import AcceptedArtifact
+from ea_research_lab.domain.evidence import EvidenceCollectionOutcome
 from ea_research_lab.domain.execution import ExecutionProviderVerdict
 from ea_research_lab.domain.identifiers import (
     ArtifactId,
@@ -25,6 +28,9 @@ from ea_research_lab.domain.identifiers import (
 )
 from ea_research_lab.domain.provenance import SchemaReferencedPayload
 from ea_research_lab.domain.values import (
+    ReproducibilityAssessment,
+    ReproducibilityLevel,
+    ReproducibilityReason,
     SchemaName,
     SchemaRef,
     SchemaVersion,
@@ -57,6 +63,14 @@ _ENVIRONMENT_KEYS = (
 
 def _ref(name: str) -> SchemaRef:
     return SchemaRef(SchemaName(name), SchemaVersion(0, 1, 0))
+
+
+def _plain(value: object) -> object:
+    if isinstance(value, Mapping):
+        return {key: _plain(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_plain(item) for item in value]
+    return value
 
 
 @unittest.skipUnless(
@@ -185,9 +199,21 @@ class Mt5StrategyTesterIntegrationTests(unittest.TestCase):
             patch.object(mt5_adapter, "_write_exact_artifact", record_stage),
             patch.object(mt5_adapter, "_write_start_config", record_config),
         ):
-            observation = request_execution(
-                Mt5StrategyTesterProvider(configuration), request
+            result = execute_run(
+                Mt5StrategyTesterProvider(configuration),
+                request,
+                ReproducibilityAssessment(
+                    ReproducibilityLevel.BEST_EFFORT,
+                    (
+                        ReproducibilityReason(
+                            "provider_replay_not_guaranteed",
+                            "The external provider does not guarantee bitwise replay.",
+                        ),
+                    ),
+                ),
             )
+        observation = result.provider_observation
+        self.assertIsNone(result.failure)
 
         self.assertIs(
             observation.verdict,
@@ -198,8 +224,34 @@ class Mt5StrategyTesterIntegrationTests(unittest.TestCase):
         self.assertTrue(observation.provider_evidence.value["terminal_log_observed"])
         self.assertTrue(observation.provider_evidence.value["tester_log_observed"])
         self.assertTrue(observation.provider_evidence.value["ownership_established"])
+        self.assertEqual(result.run_manifest.value["status"], "completed")
+        self.assertEqual(
+            result.evidence_manifest.outcome,
+            EvidenceCollectionOutcome.COMPLETED,
+        )
+        self.assertEqual(len(result.raw_evidence), len(observation.captured_outputs))
+        for collected, output in zip(
+            result.raw_evidence,
+            observation.captured_outputs,
+        ):
+            self.assertEqual(collected.content, output.content)
+            self.assertEqual(
+                str(collected.evidence_object.content_digest),
+                hashlib.sha256(output.content).hexdigest(),
+            )
+        self.assertEqual(
+            result.evidence_manifest.objects,
+            tuple(item.evidence_object for item in result.raw_evidence),
+        )
+        self.assertEqual(result.evidence_manifest.run_id, request.run_id)
+        self.assertEqual(result.evidence_manifest_ref.run_id, request.run_id)
+        validate_document(_plain(result.evidence_manifest_payload.value))
+        validate_document(_plain(result.run_manifest.value))
         self.assertEqual(staged_digests, [artifact_digest])
-        self.assertEqual(hashlib.sha256(self.artifact_path.read_bytes()).hexdigest(), artifact_digest)
+        self.assertEqual(
+            hashlib.sha256(self.artifact_path.read_bytes()).hexdigest(),
+            artifact_digest,
+        )
         config = generated_configs[0]
         for setting in (
             "AllowLiveTrading=0",

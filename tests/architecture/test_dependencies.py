@@ -242,6 +242,22 @@ class DependencyBoundaryTests(unittest.TestCase):
         )
         self.assertEqual([term for term in forbidden if term in source], [])
 
+    def test_execution_workflow_does_not_introduce_future_capabilities(self) -> None:
+        source = (PACKAGE_ROOT / "application/execution.py").read_text(
+            encoding="utf-8"
+        ).lower()
+        forbidden = (
+            "database",
+            "repository",
+            "persistence",
+            "analysis plane",
+            "platform api",
+            "semantic layer",
+            "mcp",
+            "workflow engine",
+        )
+        self.assertEqual([term for term in forbidden if term in source], [])
+
     def test_dependencies_are_approved_and_locked(self) -> None:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         self.assertEqual(

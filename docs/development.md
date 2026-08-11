@@ -126,7 +126,8 @@ Event names use lowercase dot-separated segments. Correlation identifiers retain
 Operational logs describe platform operation and debugging. They are not Raw Evidence and are not future Audit Records. Phase 02 introduces neither audit persistence nor an audit lifecycle and does not log source bytes, Artifact bytes, compiler logs, provider payloads, or physical paths automatically.
 
 The current runtime contains the Phase 01 foundation, the Phase 02 Build and
-Artifact pipeline, and the Phase 03 provider-neutral execution boundary plus
-the controlled MT5 Strategy Tester adapter. It contains no Run finalization,
-Raw Evidence sealing, persistent storage, Platform API, analysis, UI, or MCP
+Artifact pipeline, and the Phase 03 in-memory Run and Evidence workflow over the
+controlled MT5 Strategy Tester adapter. The application finalizes a Run and
+seals bounded captured outputs as immutable Raw Evidence without persistence.
+It contains no Data Plane runtime, Platform API, analysis, UI, or MCP
 implementation or scaffolding.

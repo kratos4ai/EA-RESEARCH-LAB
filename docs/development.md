@@ -126,13 +126,22 @@ Event names use lowercase dot-separated segments. Correlation identifiers retain
 Operational logs describe platform operation and debugging. They are not Raw Evidence and are not future Audit Records. Phase 02 introduces neither audit persistence nor an audit lifecycle and does not log source bytes, Artifact bytes, compiler logs, provider payloads, or physical paths automatically.
 
 The current runtime contains the Phase 01 foundation, the Phase 02 Build and
-Artifact pipeline, and the Phase 03 in-memory Run and Evidence workflow over the
-controlled MT5 Strategy Tester adapter. The application finalizes a Run and
-seals bounded captured outputs as immutable Raw Evidence without persistence.
-It contains no Data Plane runtime, Platform API, analysis, UI, or MCP
-implementation or scaffolding.
+Artifact pipeline, the Phase 03 in-memory Run and Evidence workflow, and the
+Phase 04 deterministic Dataset and initial Analysis slice. The application
+finalizes a Run, seals bounded captured outputs as immutable Raw Evidence,
+transforms the empirically supported MT5 report into an `execution-summary`
+Dataset, and computes the three approved ratios and explicit baseline deltas.
+All products remain in memory. There is no persistence, Data Plane runtime,
+Platform API, Semantic Layer runtime, UI, or MCP implementation or scaffolding.
 
-Phase 03 is complete. Its controlled provider validation is limited to the
+Phase 04 report parsing is intentionally limited to the observed English
+UTF-16LE-with-BOM Strategy Tester HTML shape and exact required labels.
+Unsupported encoding, layout, localization, missing or duplicate fields,
+malformed decimals/counts, and contradictory trade counts fail closed. The
+parser consumes captured Raw Evidence bytes and never reopens the provider
+filesystem.
+
+Phase 04 is complete. Its controlled provider validation is limited to the
 currently tested MT5 version in explicit main mode with a previously provisioned
 Demo context. Portable-mode tester success is not proven, EX5 recompilation is
 not assumed byte-deterministic, execution and evidence remain in memory, and no

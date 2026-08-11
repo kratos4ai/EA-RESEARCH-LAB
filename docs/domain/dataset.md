@@ -12,6 +12,14 @@ Dataset identity must include:
 - transformation parameters where applicable
 - creation timestamp
 - exact dataset-content schema reference
+- SHA-256 of the exact canonical dataset-content bytes
 - provenance
 
-The Dataset Manifest records these provenance links directly. It does not define storage layout or analytical formulas.
+Entity identity remains distinct from content identity. Dataset content uses
+canonical UTF-8 JSON with sorted keys and compact separators; independently
+allocated Dataset IDs and creation timestamps do not change those bytes.
+
+`dataset-manifest/0.2.0` records the exact content digest together with the
+input and transformation provenance. `dataset-manifest/0.1.0` remains an
+unchanged supported historical contract but does not bind Dataset content.
+Neither version defines storage layout or analytical formulas.

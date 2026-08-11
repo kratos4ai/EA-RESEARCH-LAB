@@ -55,7 +55,7 @@ class DependencyBoundaryTests(unittest.TestCase):
     def test_only_approved_orchestration_uses_contracts_from_application(self) -> None:
         violations = []
         for path in sorted((PACKAGE_ROOT / "application").glob("*.py")):
-            if path.name in {"build.py", "execution.py"}:
+            if path.name in {"analysis.py", "build.py", "dataset.py", "execution.py"}:
                 continue
             for module, line in _imports(path):
                 if module == "ea_research_lab.contracts" or module.startswith(
@@ -147,9 +147,79 @@ class DependencyBoundaryTests(unittest.TestCase):
         }
         self.assertEqual(methods, {"execute"})
 
+    def test_dataset_boundary_is_provider_neutral_and_narrow(self) -> None:
+        paths = ("domain/dataset.py", "application/dataset.py")
+        forbidden = (
+            "metatrader",
+            "mt5",
+            "html",
+            "filesystem",
+            "subprocess",
+            "pathlib",
+            "analysis",
+            "database",
+            "repository",
+            "persistence",
+        )
+        for relative_path in paths:
+            source = (PACKAGE_ROOT / relative_path).read_text(encoding="utf-8").lower()
+            with self.subTest(path=relative_path):
+                self.assertEqual([term for term in forbidden if term in source], [])
+
+        path = PACKAGE_ROOT / "application/dataset.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        transformer = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "DatasetTransformer"
+        )
+        methods = {
+            node.name for node in transformer.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertEqual(methods, {"transform"})
+
+    def test_analysis_boundary_is_provider_neutral_and_not_a_framework(self) -> None:
+        forbidden = (
+            "metatrader",
+            "mt5",
+            "html",
+            "filesystem",
+            "subprocess",
+            "pathlib",
+            "database",
+            "repository",
+            "persistence",
+            "ranking",
+            "optimizer",
+            "recommendation",
+            "chart",
+            "analysisengine",
+            "analysisregistry",
+        )
+        for relative_path in ("domain/analysis.py", "application/analysis.py"):
+            source = (PACKAGE_ROOT / relative_path).read_text(encoding="utf-8").lower()
+            with self.subTest(path=relative_path):
+                self.assertEqual([term for term in forbidden if term in source], [])
+
+    def test_mt5_report_vocabulary_and_filesystem_stay_in_infrastructure(self) -> None:
+        adapter = PACKAGE_ROOT / "infrastructure/mt5_report.py"
+        imports = {module.split(".", 1)[0] for module, _ in _imports(adapter)}
+        self.assertEqual(imports & {"os", "pathlib", "subprocess"}, set())
+        labels = (
+            "initial deposit:",
+            "total net profit:",
+            "profit trades (% of total):",
+            "loss trades (% of total):",
+            "utf-16le",
+        )
+        for boundary in ("domain", "application"):
+            for path in (PACKAGE_ROOT / boundary).glob("*.py"):
+                source = path.read_text(encoding="utf-8").lower()
+                with self.subTest(path=path.relative_to(ROOT)):
+                    self.assertEqual([label for label in labels if label in source], [])
+
     def test_no_generic_or_future_phase_modules_exist(self) -> None:
         forbidden_stems = {
-            "analysis",
             "api",
             "mcp",
             "persistence",
@@ -192,6 +262,7 @@ class DependencyBoundaryTests(unittest.TestCase):
                 "artifact.py",
                 "build_workspace.py",
                 "metaeditor.py",
+                "mt5_report.py",
                 "mt5_strategy_tester.py",
             }:
                 continue

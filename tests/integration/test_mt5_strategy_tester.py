@@ -10,7 +10,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 import ea_research_lab.infrastructure.mt5_strategy_tester as mt5_adapter
+from ea_research_lab.application.analysis import (
+    AnalysisRequest,
+    analyze_execution_summaries,
+)
 from ea_research_lab.application.context import RequestContext
+from ea_research_lab.application.dataset import (
+    TransformationRequest,
+    transform_dataset,
+)
 from ea_research_lab.application.execution import ExecutionRequest, execute_run
 from ea_research_lab.application.identity import new_entity_id
 from ea_research_lab.contracts import validate_document
@@ -18,6 +26,7 @@ from ea_research_lab.domain.build import AcceptedArtifact
 from ea_research_lab.domain.evidence import EvidenceCollectionOutcome
 from ea_research_lab.domain.execution import ExecutionProviderVerdict
 from ea_research_lab.domain.identifiers import (
+    AnalysisDefinitionId,
     ArtifactId,
     BuildRecordId,
     EnvironmentConfigurationId,
@@ -25,9 +34,14 @@ from ea_research_lab.domain.identifiers import (
     RunId,
     TestDefinitionId,
     TestDefinitionRevisionId,
+    TransformationId,
 )
-from ea_research_lab.domain.provenance import SchemaReferencedPayload
+from ea_research_lab.domain.provenance import (
+    EvidenceProvenance,
+    SchemaReferencedPayload,
+)
 from ea_research_lab.domain.values import (
+    DefinitionVersion,
     ReproducibilityAssessment,
     ReproducibilityLevel,
     ReproducibilityReason,
@@ -36,6 +50,7 @@ from ea_research_lab.domain.values import (
     SchemaVersion,
     Sha256Digest,
 )
+from ea_research_lab.infrastructure.mt5_report import Mt5ReportTransformer
 from ea_research_lab.infrastructure.mt5_strategy_tester import (
     Mt5StrategyTesterConfiguration,
     Mt5StrategyTesterProvider,
@@ -247,6 +262,116 @@ class Mt5StrategyTesterIntegrationTests(unittest.TestCase):
         self.assertEqual(result.evidence_manifest_ref.run_id, request.run_id)
         validate_document(_plain(result.evidence_manifest_payload.value))
         validate_document(_plain(result.run_manifest.value))
+        transformation = transform_dataset(
+            Mt5ReportTransformer(),
+            TransformationRequest(
+                request.context,
+                EvidenceProvenance(
+                    result.evidence_manifest,
+                    result.evidence_manifest_ref,
+                ),
+                result.raw_evidence,
+                new_entity_id(TransformationId),
+                DefinitionVersion("mt5-execution-summary-1"),
+            ),
+        )
+        self.assertIsNone(
+            transformation.failure,
+            repr(transformation.failure.cause) if transformation.failure else None,
+        )
+        self.assertIsNotNone(transformation.dataset)
+        dataset = transformation.dataset
+        assert dataset is not None
+        self.assertEqual(
+            dict(dataset.content.payload.value),
+            {
+                "schema_name": "execution-summary",
+                "schema_version": "0.1.0",
+                "currency": "USD",
+                "initial_deposit": "10000.00",
+                "net_profit": "0.00",
+                "gross_profit": "0.00",
+                "gross_loss": "0.00",
+                "total_trades": 0,
+                "winning_trades": 0,
+                "losing_trades": 0,
+            },
+        )
+        validate_document(_plain(dataset.content.payload.value))
+        validate_document(_plain(dataset.manifest.value))
+        self.assertEqual(
+            dataset.manifest.value["content_digest"],
+            str(dataset.content.content_digest),
+        )
+        analysis = analyze_execution_summaries(
+            AnalysisRequest(
+                request.context,
+                (dataset,),
+                new_entity_id(AnalysisDefinitionId),
+                DefinitionVersion("execution-summary-analysis-1"),
+                SchemaReferencedPayload(
+                    SchemaRef(
+                        SchemaName("execution-summary-analysis-parameters"),
+                        SchemaVersion(0, 1, 0),
+                    ),
+                    {
+                        "schema_name": "execution-summary-analysis-parameters",
+                        "schema_version": "0.1.0",
+                    },
+                ),
+                new_entity_id(EnvironmentConfigurationId),
+            )
+        )
+        self.assertIsNone(
+            analysis.failure,
+            repr(analysis.failure.cause) if analysis.failure else None,
+        )
+        self.assertIsNotNone(analysis.result)
+        analysis_result = analysis.result
+        assert analysis_result is not None
+        metrics = analysis_result.content.payload.value["metrics"][0]
+        self.assertEqual(metrics["net_return"], {"value": "0.000000000000"})
+        self.assertEqual(
+            metrics["win_rate"],
+            {"unavailable_reason": "zero_total_trades"},
+        )
+        self.assertEqual(metrics["loss_rate"], metrics["win_rate"])
+        validate_document(_plain(analysis_result.content.payload.value))
+        validate_document(_plain(analysis_result.envelope.value))
+        self.assertEqual(
+            analysis_result.envelope.value["result_digest"],
+            str(analysis_result.content.content_digest),
+        )
+        self.assertEqual(
+            result.run_manifest.value["raw_evidence_manifest"],
+            {
+                "manifest_id": str(result.evidence_manifest_ref.manifest_id),
+                "run_id": str(result.evidence_manifest_ref.run_id),
+                "content_digest": str(
+                    result.evidence_manifest_ref.content_digest
+                ),
+            },
+        )
+        self.assertEqual(
+            dataset.manifest.value["input_manifests"],
+            (result.run_manifest.value["raw_evidence_manifest"],),
+        )
+        self.assertEqual(
+            dataset.manifest.value["transformation_id"],
+            str(dataset.provenance.transformation_id),
+        )
+        self.assertEqual(
+            dataset.manifest.value["transformation_version"],
+            str(dataset.provenance.transformation_version),
+        )
+        self.assertIs(analysis_result.input_datasets[0], dataset)
+        self.assertEqual(
+            analysis_result.envelope.value["provenance"]["input_datasets"][0],
+            {
+                "dataset_id": str(dataset.provenance.dataset_id),
+                "content_digest": str(dataset.content.content_digest),
+            },
+        )
         self.assertEqual(staged_digests, [artifact_digest])
         self.assertEqual(
             hashlib.sha256(self.artifact_path.read_bytes()).hexdigest(),

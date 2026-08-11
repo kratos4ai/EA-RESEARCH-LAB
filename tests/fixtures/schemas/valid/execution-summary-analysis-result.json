@@ -1,0 +1,15 @@
+{
+  "schema_name": "execution-summary-analysis-result",
+  "schema_version": "0.1.0",
+  "baseline_content_digest": null,
+  "metrics": [
+    {
+      "dataset_content_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "currency": "USD",
+      "net_return": {"value": "0.100000000000"},
+      "win_rate": {"value": "0.600000000000"},
+      "loss_rate": {"value": "0.400000000000"}
+    }
+  ],
+  "comparisons": []
+}

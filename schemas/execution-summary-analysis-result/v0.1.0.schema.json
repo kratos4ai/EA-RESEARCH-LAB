@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:execution-summary-analysis-result:0.1.0",
+  "title": "Execution Summary Analysis Result 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "baseline_content_digest",
+    "metrics",
+    "comparisons"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "execution-summary-analysis-result"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "baseline_content_digest": {
+      "oneOf": [
+        {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/metrics"
+      }
+    },
+    "comparisons": {
+      "description": "Candidate-minus-baseline comparisons in digest order.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/comparison"
+      }
+    }
+  },
+  "$defs": {
+    "decimal_result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": {
+            "value": {
+              "type": "string",
+              "pattern": "^-?(?:0|[1-9][0-9]*)\\.[0-9]{12}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unavailable_reason"],
+          "properties": {
+            "unavailable_reason": {
+              "enum": [
+                "zero_initial_deposit",
+                "zero_total_trades",
+                "incompatible_dataset_schema",
+                "not_structurally_comparable",
+                "currency_mismatch",
+                "metric_unavailable"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dataset_content_digest",
+        "currency",
+        "net_return",
+        "win_rate",
+        "loss_rate"
+      ],
+      "properties": {
+        "dataset_content_digest": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        },
+        "currency": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "net_return": {
+          "$ref": "#/$defs/decimal_result"
+        },
+        "win_rate": {
+          "$ref": "#/$defs/decimal_result"
+        },
+        "loss_rate": {
+          "$ref": "#/$defs/decimal_result"
+        }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_content_digest",
+        "candidate_content_digest",
+        "comparable",
+        "rate_comparable",
+        "monetary_comparable",
+        "reasons",
+        "deltas"
+      ],
+      "properties": {
+        "baseline_content_digest": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        },
+        "candidate_content_digest": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        },
+        "comparable": {
+          "type": "boolean"
+        },
+        "rate_comparable": {
+          "type": "boolean"
+        },
+        "monetary_comparable": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "dataset_schema_mismatch",
+              "transformation_mismatch",
+              "currency_mismatch"
+            ]
+          }
+        },
+        "deltas": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "net_return",
+            "win_rate",
+            "loss_rate",
+            "net_profit"
+          ],
+          "properties": {
+            "net_return": {
+              "$ref": "#/$defs/decimal_result"
+            },
+            "win_rate": {
+              "$ref": "#/$defs/decimal_result"
+            },
+            "loss_rate": {
+              "$ref": "#/$defs/decimal_result"
+            },
+            "net_profit": {
+              "$ref": "#/$defs/decimal_result"
+            }
+          }
+        }
+      }
+    }
+  }
+}

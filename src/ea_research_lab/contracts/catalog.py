@@ -41,11 +41,26 @@ SUPPORTED_SCHEMA_PATHS: Mapping[SchemaRef, Path] = MappingProxyType(
         _ref("dataset-manifest", "0.1.0"): Path(
             "dataset-manifest/v0.1.0.schema.json"
         ),
+        _ref("dataset-manifest", "0.2.0"): Path(
+            "dataset-manifest/v0.2.0.schema.json"
+        ),
+        _ref("execution-summary", "0.1.0"): Path(
+            "execution-summary/v0.1.0.schema.json"
+        ),
         _ref("telemetry-envelope", "0.1.0"): Path(
             "telemetry-envelope/v0.1.0.schema.json"
         ),
         _ref("analysis-result", "0.1.0"): Path(
             "analysis-result/v0.1.0.schema.json"
+        ),
+        _ref("analysis-result", "0.2.0"): Path(
+            "analysis-result/v0.2.0.schema.json"
+        ),
+        _ref("execution-summary-analysis-parameters", "0.1.0"): Path(
+            "execution-summary-analysis-parameters/v0.1.0.schema.json"
+        ),
+        _ref("execution-summary-analysis-result", "0.1.0"): Path(
+            "execution-summary-analysis-result/v0.1.0.schema.json"
         ),
         _ref("metaeditor-build-configuration", "0.1.0"): Path(
             "metaeditor-build-configuration/v0.1.0.schema.json"

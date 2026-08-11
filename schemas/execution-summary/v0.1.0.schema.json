@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:execution-summary:0.1.0",
+  "title": "Execution Summary 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "currency",
+    "initial_deposit",
+    "net_profit",
+    "gross_profit",
+    "gross_loss",
+    "total_trades",
+    "winning_trades",
+    "losing_trades"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "execution-summary"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "initial_deposit": {
+      "$ref": "#/$defs/money"
+    },
+    "net_profit": {
+      "$ref": "#/$defs/money"
+    },
+    "gross_profit": {
+      "$ref": "#/$defs/money"
+    },
+    "gross_loss": {
+      "$ref": "#/$defs/money"
+    },
+    "total_trades": {
+      "$ref": "#/$defs/count"
+    },
+    "winning_trades": {
+      "$ref": "#/$defs/count"
+    },
+    "losing_trades": {
+      "$ref": "#/$defs/count"
+    }
+  },
+  "$defs": {
+    "money": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]*)\\.[0-9]{2}$"
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

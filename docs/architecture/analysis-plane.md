@@ -4,6 +4,22 @@
 
 Convert execution evidence into reproducible analytical outputs without requiring knowledge of the EA's internal strategy.
 
+## Current implemented boundary
+
+Phase 04 implements one in-memory deterministic vertical slice. Sealed Raw
+Evidence is transformed into a provider-neutral `execution-summary` Dataset;
+one direct application operation computes net return, win rate, loss rate, and
+explicit candidate-minus-baseline deltas. Dataset and result content use exact
+canonical byte identities. MT5 report parsing remains an infrastructure
+adapter.
+
+Current comparability is structural: exact Dataset schema and transformation
+identity/version for rates, plus matching currency for absolute monetary
+deltas. It performs no currency conversion and makes no scientific,
+experimental, statistical-superiority, or strategy-equivalence claim. There is
+no generic analysis engine, registry, ranking, optimizer, persistence, or query
+surface.
+
 ## Analysis depth
 
 The target design supports layered analysis.

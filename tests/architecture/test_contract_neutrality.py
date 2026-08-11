@@ -23,6 +23,16 @@ EXPECTED_PROPERTIES = {
         "result_schema",
         "result",
     },
+    ("analysis-result", "0.2.0"): {
+        "schema_name",
+        "schema_version",
+        "analysis_result_id",
+        "created_at",
+        "provenance",
+        "result_schema",
+        "result_digest",
+        "result",
+    },
     ("artifact-manifest", "0.1.0"): {
         "schema_name",
         "schema_version",
@@ -75,6 +85,43 @@ EXPECTED_PROPERTIES = {
         "transformation_parameters",
         "created_at",
         "dataset_schema",
+    },
+    ("dataset-manifest", "0.2.0"): {
+        "schema_name",
+        "schema_version",
+        "dataset_id",
+        "input_manifests",
+        "input_datasets",
+        "transformation_id",
+        "transformation_version",
+        "transformation_parameters",
+        "created_at",
+        "dataset_schema",
+        "content_digest",
+    },
+    ("execution-summary", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "currency",
+        "initial_deposit",
+        "net_profit",
+        "gross_profit",
+        "gross_loss",
+        "total_trades",
+        "winning_trades",
+        "losing_trades",
+    },
+    ("execution-summary-analysis-parameters", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "baseline_content_digest",
+    },
+    ("execution-summary-analysis-result", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "baseline_content_digest",
+        "metrics",
+        "comparisons",
     },
     ("raw-evidence-manifest", "0.1.0"): {
         "schema_name",
@@ -290,9 +337,11 @@ class ContractNeutralityTests(unittest.TestCase):
     def test_opaque_extension_points_remain_schema_referenced(self) -> None:
         for identity in (
             ("analysis-result", "0.1.0"),
+            ("analysis-result", "0.2.0"),
             ("build-record", "0.1.0"),
             ("build-record", "0.2.0"),
             ("dataset-manifest", "0.1.0"),
+            ("dataset-manifest", "0.2.0"),
             ("run-manifest", "0.1.0"),
             ("test-definition", "0.1.0"),
         ):
@@ -329,6 +378,21 @@ class ContractNeutralityTests(unittest.TestCase):
         ]["evidence_object"]
         self._assert_schema_ref(evidence_object["properties"]["payload_schema"])
         self.assertNotIn("payload", evidence_object["properties"])
+
+    def test_execution_summary_is_provider_neutral_and_decimal_safe(self) -> None:
+        schema = self.schemas[("execution-summary", "0.1.0")]
+        source = str(schema).lower()
+        for forbidden in ("mt5", "metatrader", "html", "strategy", "signal"):
+            with self.subTest(term=forbidden):
+                self.assertNotIn(forbidden, source)
+        for field in (
+            "initial_deposit",
+            "net_profit",
+            "gross_profit",
+            "gross_loss",
+        ):
+            self.assertEqual(schema["properties"][field]["$ref"], "#/$defs/money")
+        self.assertEqual(schema["$defs"]["money"]["type"], "string")
 
     def test_metaeditor_contracts_remain_provider_namespaced(self) -> None:
         for identity in (

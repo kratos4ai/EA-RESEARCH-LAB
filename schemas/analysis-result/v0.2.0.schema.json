@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:analysis-result:0.2.0",
+  "title": "Analysis Result 0.2.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "analysis_result_id",
+    "created_at",
+    "provenance",
+    "result_schema",
+    "result_digest",
+    "result"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "analysis-result"
+    },
+    "schema_version": {
+      "const": "0.2.0"
+    },
+    "analysis_result_id": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/analysis_result_id"
+    },
+    "created_at": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/utc_timestamp"
+    },
+    "provenance": {
+      "$ref": "#/$defs/analysis_provenance"
+    },
+    "result_schema": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+    },
+    "result_digest": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "schema_referenced_payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_ref", "value"],
+      "properties": {
+        "schema_ref": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/schema_ref"
+        },
+        "value": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "input_dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_id", "content_digest"],
+      "properties": {
+        "dataset_id": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/dataset_id"
+        },
+        "content_digest": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        }
+      }
+    },
+    "analysis_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_datasets",
+        "analysis_definition_id",
+        "analysis_version",
+        "analysis_parameters",
+        "computation_environment_id"
+      ],
+      "properties": {
+        "input_datasets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/input_dataset"
+          }
+        },
+        "analysis_definition_id": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/analysis_definition_id"
+        },
+        "analysis_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "analysis_parameters": {
+          "$ref": "#/$defs/schema_referenced_payload"
+        },
+        "computation_environment_id": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/environment_configuration_id"
+        }
+      }
+    }
+  }
+}

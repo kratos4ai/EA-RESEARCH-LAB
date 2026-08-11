@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import unittest
 from pathlib import Path
@@ -11,6 +12,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from referencing.exceptions import NoSuchResource
 
 from ea_research_lab.contracts.catalog import (
+    SCHEMA_ROOT,
     SUPPORTED_SCHEMA_PATHS,
     SchemaCatalog,
     load_catalog,
@@ -25,6 +27,11 @@ from ea_research_lab.domain.values import SchemaName, SchemaRef, SchemaVersion
 
 FIXTURES = Path(__file__).parent / "fixtures" / "schemas"
 VALID_FIXTURES = FIXTURES / "valid"
+HISTORICAL_SCHEMA_DIGESTS = {
+    Path("common/v1.0.0.schema.json"): "6467d1eb088e19a9ddf13db98ce2003854178dab93e392dd3e9b22a2ab4802da",
+    Path("dataset-manifest/v0.1.0.schema.json"): "6686929429fe006c7ca5bd6a228c51ce71e207455bf3d1990df8f600a4f5213f",
+    Path("analysis-result/v0.1.0.schema.json"): "da2fe6b78b39c17a59828fe0cd59574bb3e08118ad09b9081fc308310f71e73d",
+}
 
 
 def _load_json(path: Path) -> object:
@@ -55,8 +62,13 @@ class ContractSchemaTests(unittest.TestCase):
                 ("run-manifest", "0.1.0"),
                 ("raw-evidence-manifest", "0.1.0"),
                 ("dataset-manifest", "0.1.0"),
+                ("dataset-manifest", "0.2.0"),
+                ("execution-summary", "0.1.0"),
                 ("telemetry-envelope", "0.1.0"),
                 ("analysis-result", "0.1.0"),
+                ("analysis-result", "0.2.0"),
+                ("execution-summary-analysis-parameters", "0.1.0"),
+                ("execution-summary-analysis-result", "0.1.0"),
                 ("metaeditor-build-configuration", "0.1.0"),
                 ("metaeditor-build-configuration", "0.2.0"),
                 ("metaeditor-build-evidence", "0.1.0"),
@@ -66,7 +78,7 @@ class ContractSchemaTests(unittest.TestCase):
                 ("mt5-strategy-tester-evidence", "0.1.0"),
             },
         )
-        self.assertEqual(len(SUPPORTED_SCHEMA_PATHS), 18)
+        self.assertEqual(len(SUPPORTED_SCHEMA_PATHS), 23)
 
     def test_every_schema_is_valid_draft_2020_12(self) -> None:
         identifiers = set()
@@ -75,6 +87,12 @@ class ContractSchemaTests(unittest.TestCase):
             schema_id = schema["$id"]
             self.assertNotIn(schema_id, identifiers)
             identifiers.add(schema_id)
+
+    def test_historical_contract_bytes_remain_unchanged(self) -> None:
+        for relative_path, expected in HISTORICAL_SCHEMA_DIGESTS.items():
+            with self.subTest(schema=relative_path):
+                content = (SCHEMA_ROOT / relative_path).read_bytes()
+                self.assertEqual(hashlib.sha256(content).hexdigest(), expected)
 
     def test_every_internal_reference_resolves_from_closed_catalog(self) -> None:
         for schema in self.catalog.schemas.values():
@@ -165,7 +183,7 @@ class ContractSchemaTests(unittest.TestCase):
         )
 
     def test_all_representative_documents_validate(self) -> None:
-        self.assertEqual(len(self.valid_documents), 17)
+        self.assertEqual(len(self.valid_documents), 22)
         for name, document in self.valid_documents.items():
             with self.subTest(fixture=name):
                 validate_document(document, self.catalog)
@@ -185,10 +203,15 @@ class ContractSchemaTests(unittest.TestCase):
             invalid = copy.deepcopy(document)
             schema = self._schema_for(document)
             required_field = next(
-                field
-                for field in schema["required"]
-                if field not in {"schema_name", "schema_version"}
+                (
+                    field
+                    for field in schema["required"]
+                    if field not in {"schema_name", "schema_version"}
+                ),
+                None,
             )
+            if required_field is None:
+                continue
             del invalid[required_field]
             with self.subTest(fixture=name, field=required_field):
                 with self.assertRaises(ContractValidationError) as caught:
@@ -224,8 +247,10 @@ class ContractSchemaTests(unittest.TestCase):
             "run-manifest.json": "run_id",
             "raw-evidence-manifest.json": "manifest_id",
             "dataset-manifest.json": "dataset_id",
+            "dataset-manifest-v0.2.0.json": "dataset_id",
             "telemetry-envelope.json": "run_id",
             "analysis-result.json": "analysis_result_id",
+            "analysis-result-v0.2.0.json": "analysis_result_id",
         }
         for name, identifier_field in primary_ids.items():
             invalid = copy.deepcopy(self.valid_documents[name])
@@ -268,8 +293,8 @@ class ContractSchemaTests(unittest.TestCase):
         test_definition = self.valid_documents["test-definition.json"]
         run = self.valid_documents["run-manifest.json"]
         evidence = self.valid_documents["raw-evidence-manifest.json"]
-        dataset = self.valid_documents["dataset-manifest.json"]
-        analysis = self.valid_documents["analysis-result.json"]
+        dataset = self.valid_documents["dataset-manifest-v0.2.0.json"]
+        analysis = self.valid_documents["analysis-result-v0.2.0.json"]
 
         self.assertEqual(build["artifact_id"], artifact["artifact_id"])
         self.assertEqual(artifact["artifact_id"], test_definition["artifact_id"])
@@ -288,7 +313,21 @@ class ContractSchemaTests(unittest.TestCase):
             dataset["input_manifests"][0], run["raw_evidence_manifest"]
         )
         self.assertIn(
-            dataset["dataset_id"], analysis["provenance"]["input_dataset_ids"]
+            {
+                "dataset_id": dataset["dataset_id"],
+                "content_digest": dataset["content_digest"],
+            },
+            analysis["provenance"]["input_datasets"],
+        )
+        result_bytes = json.dumps(
+            analysis["result"],
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        self.assertEqual(
+            analysis["result_digest"], hashlib.sha256(result_bytes).hexdigest()
         )
 
     def _schema_for(self, document: dict[str, object]) -> dict[str, object]:

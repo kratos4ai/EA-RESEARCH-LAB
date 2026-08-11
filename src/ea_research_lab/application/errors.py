@@ -21,6 +21,8 @@ class ApplicationErrorCode(StrEnum):
     BUILD_PROVIDER_FAILED = "build_provider_failed"
     ARTIFACT_REJECTED = "artifact_rejected"
     EXECUTION_PROVIDER_FAILED = "execution_provider_failed"
+    DATASET_TRANSFORMATION_FAILED = "dataset_transformation_failed"
+    ANALYSIS_FAILED = "analysis_failed"
 
 
 def _freeze_json(value: object) -> object:

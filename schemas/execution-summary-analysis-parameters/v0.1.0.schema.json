@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:execution-summary-analysis-parameters:0.1.0",
+  "title": "Execution Summary Analysis Parameters 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_name", "schema_version"],
+  "properties": {
+    "schema_name": {
+      "const": "execution-summary-analysis-parameters"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "baseline_content_digest": {
+      "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+    }
+  }
+}

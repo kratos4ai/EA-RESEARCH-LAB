@@ -15,8 +15,13 @@ This directory contains the exact, machine-readable boundary contracts. All sche
 | Run manifest | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:run-manifest:0.1.0` |
 | Raw evidence manifest | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:raw-evidence-manifest:0.1.0` |
 | Dataset manifest | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:dataset-manifest:0.1.0` |
+| Dataset manifest | `0.2.0` | Pre-stable | `urn:ea-research-lab:schema:dataset-manifest:0.2.0` |
+| Execution summary | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:execution-summary:0.1.0` |
 | Telemetry envelope | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:telemetry-envelope:0.1.0` |
 | Analysis result | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:analysis-result:0.1.0` |
+| Analysis result | `0.2.0` | Pre-stable | `urn:ea-research-lab:schema:analysis-result:0.2.0` |
+| Execution summary analysis parameters | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:execution-summary-analysis-parameters:0.1.0` |
+| Execution summary analysis result | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:execution-summary-analysis-result:0.1.0` |
 | MetaEditor build configuration | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:metaeditor-build-configuration:0.1.0` |
 | MetaEditor build configuration | `0.2.0` | Pre-stable | `urn:ea-research-lab:schema:metaeditor-build-configuration:0.2.0` |
 | MetaEditor build evidence | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:metaeditor-build-evidence:0.1.0` |
@@ -33,7 +38,9 @@ Reproducibility enum members serialize using the domain values `exact`, `equival
 
 Schema files use `schemas/<schema-name>/v<major>.<minor>.<patch>.schema.json`. Every boundary instance declares the exact `schema_name` and `schema_version` used to select its schema.
 
-`ea_research_lab.contracts.catalog` is the closed support declaration. It loads only the eighteen exact paths listed above and builds a local reference registry without a retrieval callback. Runtime network resolution is forbidden.
+`ea_research_lab.contracts.catalog` is the closed support declaration. It loads
+only the exact paths listed above and builds a local reference registry without
+a retrieval callback. Runtime network resolution is forbidden.
 
 Schema references carried inside opaque extension envelopes identify the extension contract. They do not cause network retrieval or imply that the Phase 01 catalog supports that extension schema. A consumer validates such payload content only when it separately supports the referenced extension contract.
 
@@ -101,3 +108,29 @@ The lowercase textual SHA-256 of those bytes is `build_input_identity`. Schema d
 - Provider- or SUT-specific data remains opaque and schema-referenced; it does not become core vocabulary.
 
 These rules implement ADR-0008. Maturity is a compatibility commitment, not a consequence of file existence or test success.
+
+## Dataset content identity
+
+`dataset-manifest/0.1.0` remains supported and unchanged, but it identifies only
+the Dataset entity and content schema. The first real execution-summary producer
+proved that this cannot detect replacement or corruption of canonical Dataset
+content under the same entity identity. `dataset-manifest/0.2.0` therefore adds
+one required `content_digest`: SHA-256 over the exact canonical Dataset content
+bytes defined by the producing transformation. Schema identity remains the
+separate `dataset_schema` field. Historical 0.1.0 manifests are not relabeled or
+silently upgraded.
+
+## Analysis content identity
+
+`analysis-result/0.1.0` remains supported and unchanged. It references Dataset
+entities but cannot bind the exact content consumed or the deterministic result
+bytes. `analysis-result/0.2.0` therefore replaces bare input IDs with ordered
+Dataset identity/content-digest pairs and adds the SHA-256 `result_digest`.
+The result digest covers the exact canonical bytes identified by
+`result_schema`; entity identity and creation time remain envelope metadata.
+
+The execution-summary analysis uses dimensionless ratios and candidate-minus-
+baseline deltas. Calculated values are canonical decimal strings with twelve
+fractional digits and round-half-even behavior. Zero denominators and
+incompatible comparisons produce explicit bounded unavailability reasons;
+currency is never converted implicitly.

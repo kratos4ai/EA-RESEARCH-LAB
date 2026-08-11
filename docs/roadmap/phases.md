@@ -16,13 +16,15 @@ Implement MetaEditor build adapter, artifact hashing, immutable artifact manifes
 
 Implement Strategy Tester execution adapter, test definition execution, run lifecycle, and collection of tester outputs.
 
-## Phase 04 — Data Ingestion
+## Phase 04 — Dataset & Initial Analysis
 
-Implement raw run layout, schema validation, NDJSON ingestion, normalization, and derived datasets.
+Implement the in-memory deterministic path from sealed Raw Evidence to one
+provider-neutral Dataset and the initial execution-summary metrics/comparison
+result. Persistence and broader ingestion formats remain deferred.
 
 ## Phase 05 — Analysis Core
 
-Implement L0-L3 analysis first:
+Extend the Analysis Plane beyond the Phase 04 vertical slice, beginning with:
 
 - integrity;
 - provider-neutral execution metrics;

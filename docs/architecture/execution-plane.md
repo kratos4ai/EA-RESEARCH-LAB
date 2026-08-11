@@ -6,15 +6,11 @@ Execute an immutable System Under Test under a declared configuration.
 
 ## Provider abstraction
 
-The platform must depend on an abstraction similar to:
+The platform depends on one narrow application port:
 
 ```text
 ExecutionProvider
-  prepare(run)
-  execute(run)
-  wait(run)
-  collect(run)
-  cleanup(run)
+  execute(ExecutionRequest) -> ExecutionProviderObservation
 ```
 
 Initial provider:
@@ -22,6 +18,11 @@ Initial provider:
 ```text
 MetaTrader5ExecutionProvider
 ```
+
+Preparation, process lifecycle, bounded output capture, and cleanup are adapter
+implementation concerns within that single call. The provider reports observed
+facts and captured bytes; the application owns Run admission, terminal status,
+Raw Evidence identity, evidence sealing, and Run Manifest finalization.
 
 ## Build abstraction
 

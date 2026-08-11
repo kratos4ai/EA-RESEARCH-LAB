@@ -1,6 +1,6 @@
 # Phase 03 — Run & Evidence Pipeline Execution Plan
 
-- Status: Active; M1, M2, and M3 completed; M4 not started
+- Status: Completed; M1-M4 completed on 2026-08-10
 - Scope: Phase 03 only
 - Baseline: completed Phase 02 at `f63171092910adb4f885895f053172d09d46273b`
 - Runtime: Python `>=3.14,<3.15`
@@ -51,6 +51,8 @@ Layer runtime, MCP, UI, live trading, queues, and distributed workers.
 
 ## M1 — Execution Boundary
 
+- Status: Completed
+
 ### Objective and expected files
 
 Add one fake-testable provider-neutral boundary. Do not invoke MT5, collect
@@ -95,6 +97,8 @@ tests/architecture/test_dependencies.py
   Run, contract change, or dependency is introduced.
 
 ## M2 — MT5 Strategy Tester Adapter
+
+- Status: Completed
 
 ### Objective and expected files
 
@@ -146,6 +150,8 @@ schemas/mt5-strategy-tester-*/v0.x.schema.json # only if evidence requires it
 
 ## M3 — End-to-End Run and Evidence
 
+- Status: Completed
+
 ### Objective and expected files
 
 Compose Artifact, Test Definition, provider, immutable evidence, and existing
@@ -196,6 +202,8 @@ schemas/README.md                              # only if support changes
 
 ## M4 — Enforcement and Closure
 
+- Status: Completed
+
 ### Objective and expected files
 
 Prove provider isolation, contract validity, safety, and Phase 03 scope.
@@ -226,7 +234,7 @@ plans/active/phase-03-execution-plan.md
 - No dependency or excluded/future capability exists. Mark Phase 03 completed
   only after owner approval and a clean checkpoint. Do not begin Phase 04.
 
-## Major risks and unresolved MT5 questions
+## Provider risks tracked during execution
 
 | Area | Question or required treatment |
 |---|---|
@@ -238,17 +246,15 @@ plans/active/phase-03-execution-plan.md
 | Reproducibility | Which terminal, tester, history, symbol, model, range, input, and agent facts are available or provider-controlled? |
 | Contract fit | Can current pre-stable contracts represent observations without leaking MT5 semantics into core fields? |
 
-Resolve these only as M2/M3 needs them. Create no separate probe, ADR, or
-contract-review phase. Stop for an ADR only if evidence requires a durable
-provider-neutral boundary change.
+M2 and M3 resolved these risks sufficiently for the validated controlled
+scenario without requiring another ADR or a provider-neutral boundary change.
+The provider limitations recorded in `docs/development.md` remain in force.
 
-## Recommended first implementation scope
+## Closure outcome
 
-Implement M1 only: frozen neutral request/observation values, one
-`ExecutionProvider.execute()` method, Artifact/Test Definition/environment/
-context/timeout validation, one fake provider, focused unit tests, and boundary
-enforcement. Stop before infrastructure, schemas, subprocesses, real provider
-capture, evidence identities/manifests, or Run finalization. M2 requires
-separate approval.
-
-No Phase 03 runtime implementation was performed while creating this plan.
+The completed slice uses one `ExecutionProvider.execute()` port, one controlled
+MT5 adapter, and one in-memory application orchestration path. Portable and
+controlled real-provider gates verify provider isolation, exact-byte Raw
+Evidence identity, immutable sealing, final Run validation, provenance links,
+owned cleanup, and the absence of later-phase capabilities. Phase 04 was not
+started.

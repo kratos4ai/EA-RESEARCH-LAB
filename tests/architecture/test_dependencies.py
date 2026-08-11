@@ -134,6 +134,39 @@ class DependencyBoundaryTests(unittest.TestCase):
             with self.subTest(path=relative_path):
                 self.assertEqual([term for term in forbidden if term in source], [])
 
+    def test_execution_provider_port_remains_narrow(self) -> None:
+        path = PACKAGE_ROOT / "application/execution.py"
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        provider = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "ExecutionProvider"
+        )
+        methods = {
+            node.name for node in provider.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertEqual(methods, {"execute"})
+
+    def test_no_generic_or_future_phase_modules_exist(self) -> None:
+        forbidden_stems = {
+            "analysis",
+            "api",
+            "mcp",
+            "persistence",
+            "process_runner",
+            "provider_registry",
+            "repository",
+            "semantic_layer",
+            "ui",
+            "workflow_engine",
+        }
+        modules = {
+            path.stem
+            for path in PACKAGE_ROOT.rglob("*.py")
+            if path.name != "__init__.py"
+        }
+        self.assertEqual(modules & forbidden_stems, set())
+
     def test_build_workspace_excludes_provider_execution_semantics(self) -> None:
         source = (PACKAGE_ROOT / "infrastructure/build_workspace.py").read_text(
             encoding="utf-8"

@@ -131,3 +131,12 @@ controlled MT5 Strategy Tester adapter. The application finalizes a Run and
 seals bounded captured outputs as immutable Raw Evidence without persistence.
 It contains no Data Plane runtime, Platform API, analysis, UI, or MCP
 implementation or scaffolding.
+
+Phase 03 is complete. Its controlled provider validation is limited to the
+currently tested MT5 version in explicit main mode with a previously provisioned
+Demo context. Portable-mode tester success is not proven, EX5 recompilation is
+not assumed byte-deterministic, execution and evidence remain in memory, and no
+deterministic replay guarantee or durable persistence is claimed. Phase 02
+dependency-discovery and build follow-ups, wheel packaging of external schemas,
+and direct use of the transitively installed `referencing` package remain
+non-blocking follow-ups.

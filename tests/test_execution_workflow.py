@@ -162,6 +162,16 @@ class ExecutionWorkflowTests(unittest.TestCase):
         self.assertEqual(result.provider_observation, observation)
         self.assertIsNone(result.failure)
         self.assertEqual(len(result.raw_evidence), len(outputs))
+        self.assertEqual(
+            tuple(item.content for item in result.raw_evidence),
+            tuple(output.content for output in observation.captured_outputs),
+        )
+        self.assertNotIn(
+            json.dumps(
+                _plain(observation.provider_evidence.value), sort_keys=True
+            ).encode(),
+            tuple(item.content for item in result.raw_evidence),
+        )
         for collected, output in zip(result.raw_evidence, outputs):
             self.assertEqual(collected.content, output.content)
             self.assertEqual(
@@ -185,8 +195,19 @@ class ExecutionWorkflowTests(unittest.TestCase):
         )
         self.assertEqual(result.evidence_manifest.run_id, request.run_id)
         self.assertEqual(
+            result.evidence_manifest.objects,
+            tuple(item.evidence_object for item in result.raw_evidence),
+        )
+        self.assertEqual(
+            run_document["artifact_id"], str(request.artifact.artifact_id)
+        )
+        self.assertEqual(
             run_document["raw_evidence_manifest"]["manifest_id"],
             str(result.evidence_manifest.manifest_id),
+        )
+        self.assertEqual(
+            run_document["raw_evidence_manifest"]["run_id"],
+            str(request.run_id),
         )
         self.assertEqual(
             run_document["test_definition_revision_id"],

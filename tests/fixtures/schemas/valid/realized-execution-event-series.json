@@ -1,0 +1,32 @@
+{
+  "schema_name": "realized-execution-event-series",
+  "schema_version": "0.1.0",
+  "currency": "USD",
+  "time_basis": "source_local_time_without_offset",
+  "events": [
+    {
+      "sequence": 0,
+      "source_record_id": "3",
+      "local_time": "2026-08-03T00:00:20",
+      "instrument": "EURUSD",
+      "side": "sell",
+      "volume": "0.01",
+      "price": "1.15437",
+      "realized_pnl": "-0.04",
+      "commission": "0.00",
+      "swap": "0.00"
+    },
+    {
+      "sequence": 1,
+      "source_record_id": "5",
+      "local_time": "2026-08-03T00:00:40",
+      "instrument": "EURUSD",
+      "side": "buy",
+      "volume": "0.01",
+      "price": "1.15395",
+      "realized_pnl": "0.42",
+      "commission": "0.00",
+      "swap": "0.00"
+    }
+  ]
+}

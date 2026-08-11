@@ -69,5 +69,39 @@
     "value": "best_effort",
     "expected_code": "schema_validation_failed",
     "expected_path": "$.execution_reproducibility.reasons"
+  },
+  {
+    "name": "realized execution amount cannot be a float",
+    "base": "realized-execution-event-series.json",
+    "operation": "replace",
+    "path": ["events", 0, "realized_pnl"],
+    "value": -0.04,
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.events[0].realized_pnl"
+  },
+  {
+    "name": "realized execution event requires explicit sequence",
+    "base": "realized-execution-event-series.json",
+    "operation": "remove",
+    "path": ["events", 0, "sequence"],
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.events[0].sequence"
+  },
+  {
+    "name": "account balance cannot be a float",
+    "base": "account-balance-event-series.json",
+    "operation": "replace",
+    "path": ["observations", 0, "balance"],
+    "value": 10000.0,
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.observations[0].balance"
+  },
+  {
+    "name": "account balance observation requires explicit sequence",
+    "base": "account-balance-event-series.json",
+    "operation": "remove",
+    "path": ["observations", 0, "sequence"],
+    "expected_code": "schema_validation_failed",
+    "expected_path": "$.observations[0].sequence"
   }
 ]

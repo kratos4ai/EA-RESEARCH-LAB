@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:realized-execution-event-series:0.1.0",
+  "title": "Realized Execution Event Series 0.1.0",
+  "description": "Ordered execution events for which source evidence reports realized profit or loss. An event is not asserted to represent a complete execution lifecycle.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "currency",
+    "time_basis",
+    "events"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "realized-execution-event-series"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "time_basis": {
+      "const": "source_local_time_without_offset"
+    },
+    "events": {
+      "description": "Events in deterministic source order; sequence disambiguates equal local times.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/event"
+      }
+    }
+  },
+  "$defs": {
+    "money": {
+      "type": "string",
+      "pattern": "^-?(?:0|[1-9][0-9]*)\\.[0-9]{2}$"
+    },
+    "unsigned_decimal": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)\\.[0-9]+$"
+    },
+    "local_time": {
+      "description": "Source-local wall-clock time; no UTC or offset claim is made.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$"
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence",
+        "source_record_id",
+        "local_time",
+        "instrument",
+        "side",
+        "volume",
+        "price",
+        "realized_pnl",
+        "commission",
+        "swap"
+      ],
+      "properties": {
+        "sequence": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_record_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "local_time": {
+          "$ref": "#/$defs/local_time"
+        },
+        "instrument": {
+          "type": "string",
+          "minLength": 1
+        },
+        "side": {
+          "enum": ["buy", "sell"]
+        },
+        "volume": {
+          "$ref": "#/$defs/unsigned_decimal"
+        },
+        "price": {
+          "$ref": "#/$defs/unsigned_decimal"
+        },
+        "realized_pnl": {
+          "$ref": "#/$defs/money"
+        },
+        "commission": {
+          "$ref": "#/$defs/money"
+        },
+        "swap": {
+          "$ref": "#/$defs/money"
+        }
+      }
+    }
+  }
+}

@@ -47,6 +47,12 @@ SUPPORTED_SCHEMA_PATHS: Mapping[SchemaRef, Path] = MappingProxyType(
         _ref("execution-summary", "0.1.0"): Path(
             "execution-summary/v0.1.0.schema.json"
         ),
+        _ref("realized-execution-event-series", "0.1.0"): Path(
+            "realized-execution-event-series/v0.1.0.schema.json"
+        ),
+        _ref("account-balance-event-series", "0.1.0"): Path(
+            "account-balance-event-series/v0.1.0.schema.json"
+        ),
         _ref("telemetry-envelope", "0.1.0"): Path(
             "telemetry-envelope/v0.1.0.schema.json"
         ),
@@ -61,6 +67,12 @@ SUPPORTED_SCHEMA_PATHS: Mapping[SchemaRef, Path] = MappingProxyType(
         ),
         _ref("execution-summary-analysis-result", "0.1.0"): Path(
             "execution-summary-analysis-result/v0.1.0.schema.json"
+        ),
+        _ref("execution-core-analysis-parameters", "0.1.0"): Path(
+            "execution-core-analysis-parameters/v0.1.0.schema.json"
+        ),
+        _ref("execution-core-analysis-result", "0.1.0"): Path(
+            "execution-core-analysis-result/v0.1.0.schema.json"
         ),
         _ref("metaeditor-build-configuration", "0.1.0"): Path(
             "metaeditor-build-configuration/v0.1.0.schema.json"

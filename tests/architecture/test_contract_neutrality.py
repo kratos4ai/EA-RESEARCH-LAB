@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 
@@ -111,6 +112,20 @@ EXPECTED_PROPERTIES = {
         "winning_trades",
         "losing_trades",
     },
+    ("realized-execution-event-series", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "currency",
+        "time_basis",
+        "events",
+    },
+    ("account-balance-event-series", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "currency",
+        "time_basis",
+        "observations",
+    },
     ("execution-summary-analysis-parameters", "0.1.0"): {
         "schema_name",
         "schema_version",
@@ -122,6 +137,21 @@ EXPECTED_PROPERTIES = {
         "baseline_content_digest",
         "metrics",
         "comparisons",
+    },
+    ("execution-core-analysis-parameters", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+    },
+    ("execution-core-analysis-result", "0.1.0"): {
+        "schema_name",
+        "schema_version",
+        "currency",
+        "input_content_digests",
+        "aggregate_metrics",
+        "realized_execution_distribution",
+        "realized_execution_sequence",
+        "event_balance_analysis",
+        "integrity",
     },
     ("raw-evidence-manifest", "0.1.0"): {
         "schema_name",
@@ -393,6 +423,78 @@ class ContractNeutralityTests(unittest.TestCase):
         ):
             self.assertEqual(schema["properties"][field]["$ref"], "#/$defs/money")
         self.assertEqual(schema["$defs"]["money"]["type"], "string")
+
+    def test_phase_05_dataset_contracts_are_neutral_and_decimal_safe(self) -> None:
+        for identity in (
+            ("realized-execution-event-series", "0.1.0"),
+            ("account-balance-event-series", "0.1.0"),
+        ):
+            schema = self.schemas[identity]
+            source = str(schema).lower()
+            with self.subTest(schema=identity):
+                for forbidden in (
+                    "mt5",
+                    "metatrader",
+                    "html",
+                    "strategy",
+                    "signal",
+                    "deal",
+                    "position",
+                ):
+                    self.assertIsNone(
+                        re.search(rf"\b{re.escape(forbidden)}\b", source)
+                    )
+                self.assertEqual(schema["$defs"]["money"]["type"], "string")
+
+        realized = self.schemas[("realized-execution-event-series", "0.1.0")]
+        event = realized["$defs"]["event"]
+        self.assertEqual(
+            realized["properties"]["time_basis"]["const"],
+            "source_local_time_without_offset",
+        )
+        self.assertEqual(event["properties"]["source_record_id"], {
+            "type": "string",
+            "minLength": 1,
+        })
+        self.assertNotIn("format", realized["$defs"]["local_time"])
+        self.assertNotIn("direction", event["properties"])
+
+        balances = self.schemas[("account-balance-event-series", "0.1.0")]
+        observation = balances["$defs"]["observation"]
+        self.assertEqual(
+            balances["properties"]["time_basis"]["const"],
+            "source_local_time_without_offset",
+        )
+        self.assertEqual(set(observation["properties"]), {
+            "sequence",
+            "source_record_id",
+            "local_time",
+            "balance",
+        })
+        self.assertIn("not an equity", balances["description"].lower())
+        self.assertIn("continuously sampled", balances["description"].lower())
+
+    def test_execution_core_analysis_contract_is_provider_neutral(self) -> None:
+        schema = self.schemas[("execution-core-analysis-result", "0.1.0")]
+        source = str(schema).lower()
+        for forbidden in (
+            "mt5",
+            "metatrader",
+            "html",
+            "strategy",
+            "signal",
+            "deal",
+            "position",
+            "trade",
+        ):
+            with self.subTest(term=forbidden):
+                self.assertIsNone(
+                    re.search(rf"\b{re.escape(forbidden)}\b", source)
+                )
+        self.assertNotIn("equity", schema["properties"])
+        drawdown = schema["$defs"]["event_balance_analysis"]
+        self.assertIn("event-indexed", drawdown["description"])
+        self.assertIn("no continuous-path", drawdown["description"])
 
     def test_metaeditor_contracts_remain_provider_namespaced(self) -> None:
         for identity in (

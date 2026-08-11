@@ -1,0 +1,38 @@
+{
+  "schema_name": "account-balance-event-series",
+  "schema_version": "0.1.0",
+  "currency": "USD",
+  "time_basis": "source_local_time_without_offset",
+  "observations": [
+    {
+      "sequence": 0,
+      "source_record_id": "1",
+      "local_time": "2026-08-03T00:00:00",
+      "balance": "10000.00"
+    },
+    {
+      "sequence": 1,
+      "source_record_id": "2",
+      "local_time": "2026-08-03T00:00:00",
+      "balance": "10000.00"
+    },
+    {
+      "sequence": 2,
+      "source_record_id": "3",
+      "local_time": "2026-08-03T00:00:20",
+      "balance": "9999.96"
+    },
+    {
+      "sequence": 3,
+      "source_record_id": "4",
+      "local_time": "2026-08-03T00:00:20",
+      "balance": "9999.96"
+    },
+    {
+      "sequence": 4,
+      "source_record_id": "5",
+      "local_time": "2026-08-03T00:00:40",
+      "balance": "10000.38"
+    }
+  ]
+}

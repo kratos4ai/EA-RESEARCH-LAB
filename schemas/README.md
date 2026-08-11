@@ -17,11 +17,15 @@ This directory contains the exact, machine-readable boundary contracts. All sche
 | Dataset manifest | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:dataset-manifest:0.1.0` |
 | Dataset manifest | `0.2.0` | Pre-stable | `urn:ea-research-lab:schema:dataset-manifest:0.2.0` |
 | Execution summary | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:execution-summary:0.1.0` |
+| Realized execution event series | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:realized-execution-event-series:0.1.0` |
+| Account balance event series | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:account-balance-event-series:0.1.0` |
 | Telemetry envelope | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:telemetry-envelope:0.1.0` |
 | Analysis result | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:analysis-result:0.1.0` |
 | Analysis result | `0.2.0` | Pre-stable | `urn:ea-research-lab:schema:analysis-result:0.2.0` |
 | Execution summary analysis parameters | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:execution-summary-analysis-parameters:0.1.0` |
 | Execution summary analysis result | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:execution-summary-analysis-result:0.1.0` |
+| Execution Core analysis parameters | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:execution-core-analysis-parameters:0.1.0` |
+| Execution Core analysis result | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:execution-core-analysis-result:0.1.0` |
 | MetaEditor build configuration | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:metaeditor-build-configuration:0.1.0` |
 | MetaEditor build configuration | `0.2.0` | Pre-stable | `urn:ea-research-lab:schema:metaeditor-build-configuration:0.2.0` |
 | MetaEditor build evidence | `0.1.0` | Pre-stable | `urn:ea-research-lab:schema:metaeditor-build-evidence:0.1.0` |
@@ -134,3 +138,35 @@ baseline deltas. Calculated values are canonical decimal strings with twelve
 fractional digits and round-half-even behavior. Zero denominators and
 incompatible comparisons produce explicit bounded unavailability reasons;
 currency is never converted implicitly.
+
+## Phase 05 observed Dataset content
+
+`realized-execution-event-series/0.1.0` represents ordered execution events for
+which captured source evidence explicitly reports realized profit or loss. One
+event is not asserted to be a complete trade or position. It carries the
+observed side, volume, price, realized PnL, commission, and swap separately;
+the contract does not infer a combined net amount or an open/close relationship.
+
+`account-balance-event-series/0.1.0` represents account balances reported after
+ordered source events. It is event-indexed, not continuously sampled, and does
+not contain equity observations. Both contracts preserve source-local wall-clock
+times without claiming UTC or an offset. Explicit zero-based `sequence` values
+define deterministic source order when local timestamps are equal. Financial
+values are decimal strings and never JSON numbers.
+
+## Execution Core analysis
+
+`execution-core-analysis-result/0.1.0` consumes exactly one execution summary,
+one realized execution-event series, and one account balance-event series that
+share currency and sealed-evidence provenance. It separates aggregate metrics,
+realized-event outcome distribution and sequence, and event-indexed balance
+analysis. Mean absolute deviation is defined as
+`sum(abs(value - arithmetic_mean)) / count`. Zero outcomes break both positive
+and negative realized-event streaks.
+
+Event-balance drawdown uses only observed balance events: the running peak at
+event `i` is the maximum balance through `i`; drawdown amount is running peak
+minus observed balance; drawdown rate is that amount divided by a non-zero
+running peak. The maximum is taken over the observed event sequence. The
+contract makes no equity, continuous-path, holding-duration, periodic-return,
+ranking, or recommendation claim.

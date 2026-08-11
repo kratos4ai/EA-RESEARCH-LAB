@@ -1,0 +1,45 @@
+{
+  "schema_name": "execution-core-analysis-result",
+  "schema_version": "0.1.0",
+  "currency": "USD",
+  "input_content_digests": {
+    "execution_summary": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "realized_execution_event_series": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "account_balance_event_series": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "aggregate_metrics": {
+    "net_return": {"value": "0.000038000000"},
+    "win_rate": {"value": "0.500000000000"},
+    "loss_rate": {"value": "0.500000000000"},
+    "expected_payoff": {"value": "0.190000000000"},
+    "profit_factor": {"value": "10.500000000000"},
+    "average_winning_result": {"value": "0.420000000000"},
+    "average_losing_magnitude": {"value": "0.040000000000"},
+    "payoff_ratio": {"value": "10.500000000000"},
+    "gross_profit_return": {"value": "0.000042000000"},
+    "gross_loss_return": {"value": "0.000004000000"}
+  },
+  "realized_execution_distribution": {
+    "count": 2,
+    "minimum": {"value": "-0.040000000000"},
+    "maximum": {"value": "0.420000000000"},
+    "arithmetic_mean": {"value": "0.190000000000"},
+    "median": {"value": "0.190000000000"},
+    "mean_absolute_deviation": {"value": "0.230000000000"}
+  },
+  "realized_execution_sequence": {
+    "longest_positive_streak": 1,
+    "longest_negative_streak": 1,
+    "zero_result_count": 0
+  },
+  "event_balance_analysis": {
+    "event_balance_max_drawdown": {
+      "amount": {"value": "0.040000000000"},
+      "rate": {"value": "0.000004000000"}
+    }
+  },
+  "integrity": {
+    "input_currency_consistent": true,
+    "input_evidence_manifest_consistent": true
+  }
+}

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -42,6 +44,18 @@ _PARAMETERS_REF = SchemaRef(
 _CONTENT_REF = SchemaRef(
     SchemaName("execution-summary-analysis-result"), SchemaVersion(0, 1, 0)
 )
+_CORE_PARAMETERS_REF = SchemaRef(
+    SchemaName("execution-core-analysis-parameters"), SchemaVersion(0, 1, 0)
+)
+_CORE_CONTENT_REF = SchemaRef(
+    SchemaName("execution-core-analysis-result"), SchemaVersion(0, 1, 0)
+)
+_REALIZED_EVENTS_REF = SchemaRef(
+    SchemaName("realized-execution-event-series"), SchemaVersion(0, 1, 0)
+)
+_BALANCE_EVENTS_REF = SchemaRef(
+    SchemaName("account-balance-event-series"), SchemaVersion(0, 1, 0)
+)
 _RESULT_REF = SchemaRef(SchemaName("analysis-result"), SchemaVersion(0, 2, 0))
 _QUANTUM = Decimal("0.000000000001")
 
@@ -80,15 +94,19 @@ class AnalysisRequest:
             raise InvalidValueError("Analysis cannot repeat Dataset content.")
         for dataset in datasets:
             _validate_dataset(dataset)
-        if self.analysis_parameters.schema_ref != _PARAMETERS_REF:
+        if self.analysis_parameters.schema_ref not in {
+            _PARAMETERS_REF,
+            _CORE_PARAMETERS_REF,
+        }:
             raise InvalidValueError("Analysis parameters use an unsupported schema.")
         validate_document(_plain_json(self.analysis_parameters.value))
-        baseline = self.analysis_parameters.value.get("baseline_content_digest")
-        digests = {str(item.content.content_digest) for item in datasets}
-        if len(datasets) > 1 and baseline is None:
-            raise InvalidValueError("Multi-Dataset analysis requires a baseline.")
-        if baseline is not None and baseline not in digests:
-            raise InvalidValueError("Analysis baseline is not an input Dataset.")
+        if self.analysis_parameters.schema_ref == _PARAMETERS_REF:
+            baseline = self.analysis_parameters.value.get("baseline_content_digest")
+            digests = {str(item.content.content_digest) for item in datasets}
+            if len(datasets) > 1 and baseline is None:
+                raise InvalidValueError("Multi-Dataset analysis requires a baseline.")
+            if baseline is not None and baseline not in digests:
+                raise InvalidValueError("Analysis baseline is not an input Dataset.")
         object.__setattr__(
             self,
             "datasets",
@@ -119,33 +137,30 @@ def analyze_execution_summaries(request: AnalysisRequest) -> AnalysisOutcome:
         raise TypeError("Analysis requires an AnalysisRequest.")
     try:
         content_document = _analyze(request)
-        validate_document(content_document)
-        content = AnalysisContent(
-            SchemaReferencedPayload(_CONTENT_REF, content_document)
-        )
-        result_id = new_entity_id(AnalysisResultId)
-        created_at = _now()
-        provenance = AnalysisProvenance(
-            result_id,
-            request.analysis_definition_id,
-            request.analysis_version,
-            request.analysis_parameters,
-            request.computation_environment_id,
-            tuple(item.provenance.dataset_id for item in request.datasets),
-        )
-        envelope_document = _envelope_document(
-            request, provenance, content, created_at
-        )
-        validate_document(envelope_document)
         return AnalysisOutcome(
-            AnalysisResult(
-                content,
-                provenance,
-                request.datasets,
-                SchemaReferencedPayload(_RESULT_REF, envelope_document),
-                created_at,
-            ),
+            _create_result(request, _CONTENT_REF, content_document), None
+        )
+    except Exception as error:
+        return AnalysisOutcome(
             None,
+            ApplicationError(
+                ApplicationErrorCode.ANALYSIS_FAILED,
+                "Analysis failed.",
+                request_id=request.context.request_id,
+                cause=error,
+            ),
+        )
+
+
+def analyze_execution_core(request: AnalysisRequest) -> AnalysisOutcome:
+    """Compute the direct deterministic Analysis Core result."""
+
+    if not isinstance(request, AnalysisRequest):
+        raise TypeError("Analysis requires an AnalysisRequest.")
+    try:
+        content_document = _analyze_execution_core(request)
+        return AnalysisOutcome(
+            _create_result(request, _CORE_CONTENT_REF, content_document), None
         )
     except Exception as error:
         return AnalysisOutcome(
@@ -160,6 +175,8 @@ def analyze_execution_summaries(request: AnalysisRequest) -> AnalysisOutcome:
 
 
 def _analyze(request: AnalysisRequest) -> dict[str, object]:
+    if request.analysis_parameters.schema_ref != _PARAMETERS_REF:
+        raise InvalidValueError("Execution-summary analysis parameters are invalid.")
     baseline_digest = request.analysis_parameters.value.get(
         "baseline_content_digest"
     )
@@ -194,6 +211,225 @@ def _analyze(request: AnalysisRequest) -> dict[str, object]:
         "metrics": metrics,
         "comparisons": comparisons,
     }
+
+
+def _analyze_execution_core(request: AnalysisRequest) -> dict[str, object]:
+    if request.analysis_parameters.schema_ref != _CORE_PARAMETERS_REF:
+        raise InvalidValueError("Execution Core analysis parameters are invalid.")
+    datasets = {dataset.content.payload.schema_ref: dataset for dataset in request.datasets}
+    expected = {_INPUT_REF, _REALIZED_EVENTS_REF, _BALANCE_EVENTS_REF}
+    if len(request.datasets) != 3 or set(datasets) != expected:
+        raise InvalidValueError("Execution Core requires its three exact Datasets.")
+
+    documents = {
+        schema_ref: _plain_json(dataset.content.payload.value)
+        for schema_ref, dataset in datasets.items()
+    }
+    for document in documents.values():
+        validate_document(document)
+
+    currencies = {document["currency"] for document in documents.values()}
+    if len(currencies) != 1:
+        raise InvalidValueError("Execution Core Dataset currencies are inconsistent.")
+    manifests = {
+        dataset.provenance.input_manifests for dataset in datasets.values()
+    }
+    if len(manifests) != 1 or not next(iter(manifests)):
+        raise InvalidValueError(
+            "Execution Core Dataset evidence provenance is inconsistent."
+        )
+
+    summary = documents[_INPUT_REF]
+    realized = documents[_REALIZED_EVENTS_REF]
+    balances = documents[_BALANCE_EVENTS_REF]
+    outcomes = _realized_outcomes(realized)
+    balance_values = _event_balances(balances)
+    return {
+        "schema_name": str(_CORE_CONTENT_REF.name),
+        "schema_version": str(_CORE_CONTENT_REF.version),
+        "currency": next(iter(currencies)),
+        "input_content_digests": {
+            "execution_summary": str(datasets[_INPUT_REF].content.content_digest),
+            "realized_execution_event_series": str(
+                datasets[_REALIZED_EVENTS_REF].content.content_digest
+            ),
+            "account_balance_event_series": str(
+                datasets[_BALANCE_EVENTS_REF].content.content_digest
+            ),
+        },
+        "aggregate_metrics": _aggregate_metrics(summary),
+        "realized_execution_distribution": _distribution(outcomes),
+        "realized_execution_sequence": _sequence(outcomes),
+        "event_balance_analysis": _balance_analysis(balance_values),
+        "integrity": {
+            "input_currency_consistent": True,
+            "input_evidence_manifest_consistent": True,
+        },
+    }
+
+
+def _aggregate_metrics(summary: Mapping[str, object]) -> dict[str, object]:
+    net_profit = _decimal(summary["net_profit"])
+    gross_profit = _decimal(summary["gross_profit"])
+    gross_loss = abs(_decimal(summary["gross_loss"]))
+    initial_deposit = _decimal(summary["initial_deposit"])
+    total_trades = Decimal(summary["total_trades"])
+    winning_trades = Decimal(summary["winning_trades"])
+    losing_trades = Decimal(summary["losing_trades"])
+    average_winning = _divide(gross_profit, winning_trades)
+    average_losing = _divide(gross_loss, losing_trades)
+
+    if average_winning is None:
+        payoff_ratio = _unavailable("zero_winning_trades")
+    elif average_losing is None:
+        payoff_ratio = _unavailable("zero_losing_trades")
+    elif average_losing == 0:
+        payoff_ratio = _unavailable("zero_average_losing_magnitude")
+    else:
+        payoff_ratio = _value(_divide(average_winning, average_losing))
+
+    return {
+        "net_return": _ratio(
+            net_profit, initial_deposit, "zero_initial_deposit"
+        ),
+        "win_rate": _ratio(
+            winning_trades, total_trades, "zero_total_trades"
+        ),
+        "loss_rate": _ratio(
+            losing_trades, total_trades, "zero_total_trades"
+        ),
+        "expected_payoff": _ratio(
+            net_profit, total_trades, "zero_total_trades"
+        ),
+        "profit_factor": _ratio(
+            gross_profit, gross_loss, "zero_gross_loss"
+        ),
+        "average_winning_result": (
+            _value(average_winning)
+            if average_winning is not None
+            else _unavailable("zero_winning_trades")
+        ),
+        "average_losing_magnitude": (
+            _value(average_losing)
+            if average_losing is not None
+            else _unavailable("zero_losing_trades")
+        ),
+        "payoff_ratio": payoff_ratio,
+        "gross_profit_return": _ratio(
+            gross_profit, initial_deposit, "zero_initial_deposit"
+        ),
+        "gross_loss_return": _ratio(
+            gross_loss, initial_deposit, "zero_initial_deposit"
+        ),
+    }
+
+
+def _realized_outcomes(document: Mapping[str, object]) -> tuple[Decimal, ...]:
+    events = document["events"]
+    if [event["sequence"] for event in events] != list(range(len(events))):
+        raise InvalidValueError("Realized execution-event order is invalid.")
+    identifiers = tuple(event["source_record_id"] for event in events)
+    if len(set(identifiers)) != len(identifiers):
+        raise InvalidValueError("Realized execution-event identity is ambiguous.")
+    outcomes = tuple(_decimal(event["realized_pnl"]) for event in events)
+    if not outcomes:
+        raise InvalidValueError("Realized execution-event series is empty.")
+    return outcomes
+
+
+def _event_balances(document: Mapping[str, object]) -> tuple[Decimal, ...]:
+    observations = document["observations"]
+    if [item["sequence"] for item in observations] != list(
+        range(len(observations))
+    ):
+        raise InvalidValueError("Account balance-event order is invalid.")
+    identifiers = tuple(item["source_record_id"] for item in observations)
+    if len(set(identifiers)) != len(identifiers):
+        raise InvalidValueError("Account balance-event identity is ambiguous.")
+    balances = tuple(_decimal(item["balance"]) for item in observations)
+    if not balances:
+        raise InvalidValueError("Account balance-event series is empty.")
+    return balances
+
+
+def _distribution(values: tuple[Decimal, ...]) -> dict[str, object]:
+    with localcontext() as context:
+        context.prec = _precision(*values)
+        count = Decimal(len(values))
+        mean = sum(values, Decimal(0)) / count
+        ordered = sorted(values)
+        middle = len(ordered) // 2
+        median = (
+            ordered[middle]
+            if len(ordered) % 2
+            else (ordered[middle - 1] + ordered[middle]) / Decimal(2)
+        )
+        mean_absolute_deviation = (
+            sum((abs(value - mean) for value in values), Decimal(0)) / count
+        )
+    return {
+        "count": len(values),
+        "minimum": _value(min(values)),
+        "maximum": _value(max(values)),
+        "arithmetic_mean": _value(mean),
+        "median": _value(median),
+        "mean_absolute_deviation": _value(mean_absolute_deviation),
+    }
+
+
+def _sequence(values: tuple[Decimal, ...]) -> dict[str, int]:
+    positive = negative = longest_positive = longest_negative = zeros = 0
+    for value in values:
+        if value > 0:
+            positive += 1
+            negative = 0
+            longest_positive = max(longest_positive, positive)
+        elif value < 0:
+            negative += 1
+            positive = 0
+            longest_negative = max(longest_negative, negative)
+        else:
+            positive = negative = 0
+            zeros += 1
+    return {
+        "longest_positive_streak": longest_positive,
+        "longest_negative_streak": longest_negative,
+        "zero_result_count": zeros,
+    }
+
+
+def _balance_analysis(balances: tuple[Decimal, ...]) -> dict[str, object]:
+    running_peak = balances[0]
+    maximum_amount = Decimal(0)
+    rates: list[Decimal] = []
+    for balance in balances:
+        running_peak = max(running_peak, balance)
+        amount = running_peak - balance
+        maximum_amount = max(maximum_amount, amount)
+        if running_peak != 0:
+            rates.append(_divide(amount, running_peak))
+    return {
+        "event_balance_max_drawdown": {
+            "amount": _value(maximum_amount),
+            "rate": (
+                _value(max(rates))
+                if rates
+                else _unavailable("zero_running_peak")
+            ),
+        }
+    }
+
+
+def _decimal(value: object) -> Decimal:
+    if not isinstance(value, str):
+        raise InvalidValueError("Analysis requires decimal strings.")
+    try:
+        parsed = Decimal(value)
+    except InvalidOperation as error:
+        raise InvalidValueError("Analysis decimal input is invalid.") from error
+    if not parsed.is_finite():
+        raise InvalidValueError("Analysis decimal input must be finite.")
+    return parsed
 
 
 def _summary(dataset: Dataset) -> dict[str, object] | None:
@@ -308,11 +544,20 @@ def _comparison_document(
 
 
 def _ratio(numerator: Decimal, denominator: Decimal, reason: str) -> dict[str, str]:
+    quotient = _divide(numerator, denominator)
+    return _unavailable(reason) if quotient is None else _value(quotient)
+
+
+def _divide(numerator: Decimal, denominator: Decimal) -> Decimal | None:
     if denominator == 0:
-        return {"unavailable_reason": reason}
+        return None
     with localcontext() as context:
         context.prec = _precision(numerator, denominator)
-        return _value(numerator / denominator)
+        return numerator / denominator
+
+
+def _unavailable(reason: str) -> dict[str, str]:
+    return {"unavailable_reason": reason}
 
 
 def _difference(
@@ -347,12 +592,52 @@ def _validate_dataset(dataset: Dataset) -> None:
         raise InvalidValueError("Analysis requires Dataset Manifest 0.2.0.")
     document = _plain_json(dataset.manifest.value)
     validate_document(document)
+    canonical_bytes = json.dumps(
+        _plain_json(dataset.content.payload.value),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    content_digest = hashlib.sha256(canonical_bytes).hexdigest()
     if (
         document["dataset_id"] != str(dataset.provenance.dataset_id)
         or document["dataset_schema"] != str(dataset.content.payload.schema_ref)
         or document["content_digest"] != str(dataset.content.content_digest)
+        or canonical_bytes != dataset.content.canonical_bytes
+        or content_digest != str(dataset.content.content_digest)
     ):
         raise InvalidValueError("Analysis Dataset identity is inconsistent.")
+
+
+def _create_result(
+    request: AnalysisRequest,
+    content_ref: SchemaRef,
+    content_document: dict[str, object],
+) -> AnalysisResult:
+    validate_document(content_document)
+    content = AnalysisContent(
+        SchemaReferencedPayload(content_ref, content_document)
+    )
+    result_id = new_entity_id(AnalysisResultId)
+    created_at = _now()
+    provenance = AnalysisProvenance(
+        result_id,
+        request.analysis_definition_id,
+        request.analysis_version,
+        request.analysis_parameters,
+        request.computation_environment_id,
+        tuple(item.provenance.dataset_id for item in request.datasets),
+    )
+    envelope_document = _envelope_document(request, provenance, content, created_at)
+    validate_document(envelope_document)
+    return AnalysisResult(
+        content,
+        provenance,
+        request.datasets,
+        SchemaReferencedPayload(_RESULT_REF, envelope_document),
+        created_at,
+    )
 
 
 def _envelope_document(

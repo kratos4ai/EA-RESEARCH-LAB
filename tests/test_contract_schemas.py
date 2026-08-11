@@ -31,6 +31,10 @@ HISTORICAL_SCHEMA_DIGESTS = {
     Path("common/v1.0.0.schema.json"): "6467d1eb088e19a9ddf13db98ce2003854178dab93e392dd3e9b22a2ab4802da",
     Path("dataset-manifest/v0.1.0.schema.json"): "6686929429fe006c7ca5bd6a228c51ce71e207455bf3d1990df8f600a4f5213f",
     Path("analysis-result/v0.1.0.schema.json"): "da2fe6b78b39c17a59828fe0cd59574bb3e08118ad09b9081fc308310f71e73d",
+    Path("realized-execution-event-series/v0.1.0.schema.json"): "49884c08cf97cb9bc6e0f3d2d8596eafd0d1a0720e01854f6bab28c307ed7500",
+    Path("account-balance-event-series/v0.1.0.schema.json"): "69c3437b8cd3a5af377ddbdd3042f0157d4d70b9de55961b93dcdd179661b984",
+    Path("execution-core-analysis-parameters/v0.1.0.schema.json"): "bab11ec600b218cb3745a2ab469e1e36cc93f14222eb26a717629a20cf59ffa4",
+    Path("execution-core-analysis-result/v0.1.0.schema.json"): "a5da3130da0839ccd22946e699bc0b131010a0ca1e535a5d3ae31a74c574ab9b",
 }
 
 
@@ -64,11 +68,15 @@ class ContractSchemaTests(unittest.TestCase):
                 ("dataset-manifest", "0.1.0"),
                 ("dataset-manifest", "0.2.0"),
                 ("execution-summary", "0.1.0"),
+                ("realized-execution-event-series", "0.1.0"),
+                ("account-balance-event-series", "0.1.0"),
                 ("telemetry-envelope", "0.1.0"),
                 ("analysis-result", "0.1.0"),
                 ("analysis-result", "0.2.0"),
                 ("execution-summary-analysis-parameters", "0.1.0"),
                 ("execution-summary-analysis-result", "0.1.0"),
+                ("execution-core-analysis-parameters", "0.1.0"),
+                ("execution-core-analysis-result", "0.1.0"),
                 ("metaeditor-build-configuration", "0.1.0"),
                 ("metaeditor-build-configuration", "0.2.0"),
                 ("metaeditor-build-evidence", "0.1.0"),
@@ -78,7 +86,7 @@ class ContractSchemaTests(unittest.TestCase):
                 ("mt5-strategy-tester-evidence", "0.1.0"),
             },
         )
-        self.assertEqual(len(SUPPORTED_SCHEMA_PATHS), 23)
+        self.assertEqual(len(SUPPORTED_SCHEMA_PATHS), 27)
 
     def test_every_schema_is_valid_draft_2020_12(self) -> None:
         identifiers = set()
@@ -183,7 +191,7 @@ class ContractSchemaTests(unittest.TestCase):
         )
 
     def test_all_representative_documents_validate(self) -> None:
-        self.assertEqual(len(self.valid_documents), 22)
+        self.assertEqual(len(self.valid_documents), 26)
         for name, document in self.valid_documents.items():
             with self.subTest(fixture=name):
                 validate_document(document, self.catalog)

@@ -6,12 +6,14 @@ Convert execution evidence into reproducible analytical outputs without requirin
 
 ## Current implemented boundary
 
-Phase 04 implements one in-memory deterministic vertical slice. Sealed Raw
-Evidence is transformed into a provider-neutral `execution-summary` Dataset;
-one direct application operation computes net return, win rate, loss rate, and
-explicit candidate-minus-baseline deltas. Dataset and result content use exact
-canonical byte identities. MT5 report parsing remains an infrastructure
-adapter.
+Phase 05 implements an in-memory deterministic vertical slice from sealed Raw
+Evidence through three provider-neutral Datasets to direct Analysis results.
+The products are `execution-summary`, `realized-execution-event-series`, and
+`account-balance-event-series`. The direct Execution Core operation computes
+the approved aggregate ratios, a bounded realized-event PnL distribution,
+source-order event streaks, and maximum drawdown over observed event balances.
+Dataset and result content use exact canonical byte identities. MT5 report
+parsing remains an infrastructure adapter.
 
 Current comparability is structural: exact Dataset schema and transformation
 identity/version for rates, plus matching currency for absolute monetary
@@ -19,6 +21,14 @@ deltas. It performs no currency conversion and makes no scientific,
 experimental, statistical-superiority, or strategy-equivalence claim. There is
 no generic analysis engine, registry, ranking, optimizer, persistence, or query
 surface.
+
+The detailed rows are realized execution events, not reconstructed trades or
+positions. Their timestamps are provider-local without an offset. Balance is
+event-indexed and does not establish equity or a continuous path. Consequently,
+holding duration, equity/continuous drawdown, periodic returns, and other
+unsupported analytics remain outside the implemented boundary. Zero
+denominators produce explicit bounded unavailability rather than synthetic
+zero values.
 
 ## Analysis depth
 

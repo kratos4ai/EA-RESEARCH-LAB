@@ -24,16 +24,16 @@ result. Persistence and broader ingestion formats remain deferred.
 
 ## Phase 05 — Analysis Core
 
-Extend the Analysis Plane beyond the Phase 04 vertical slice, beginning with:
-
-- integrity;
-- provider-neutral execution metrics;
-- timeseries;
-- distributions.
-
-Then extend to stability and comparison.
+Extend the Phase 04 vertical slice with provider-neutral realized execution
+events, event-indexed balances, deterministic aggregate metrics, a bounded
+realized-event distribution, simple ordered-event sequences, and observed
+event-balance drawdown. Broader timeseries, stability, and comparison remain
+later work when their required evidence semantics exist.
 
 ## Phase 06 — Semantic Layer & Platform API Query Capability
+
+Planning prerequisite: resolve durable Data Plane runtime and persistence
+ownership explicitly. Phase 05 does not make that decision.
 
 Define stable semantic contracts for Run, Artifact, Dataset, Metric, Timeseries, Distribution, Analysis, and Comparison, and expose bounded retrieval through the Query capability of the Platform API.
 

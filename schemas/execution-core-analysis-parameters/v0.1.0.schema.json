@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:execution-core-analysis-parameters:0.1.0",
+  "title": "Execution Core Analysis Parameters 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_name", "schema_version"],
+  "properties": {
+    "schema_name": {
+      "const": "execution-core-analysis-parameters"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    }
+  }
+}

@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ea-research-lab:schema:execution-core-analysis-result:0.1.0",
+  "title": "Execution Core Analysis Result 0.1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "currency",
+    "input_content_digests",
+    "aggregate_metrics",
+    "realized_execution_distribution",
+    "realized_execution_sequence",
+    "event_balance_analysis",
+    "integrity"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "execution-core-analysis-result"
+    },
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "currency": {
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "input_content_digests": {
+      "$ref": "#/$defs/input_content_digests"
+    },
+    "aggregate_metrics": {
+      "$ref": "#/$defs/aggregate_metrics"
+    },
+    "realized_execution_distribution": {
+      "$ref": "#/$defs/distribution"
+    },
+    "realized_execution_sequence": {
+      "$ref": "#/$defs/sequence"
+    },
+    "event_balance_analysis": {
+      "$ref": "#/$defs/event_balance_analysis"
+    },
+    "integrity": {
+      "$ref": "#/$defs/integrity"
+    }
+  },
+  "$defs": {
+    "decimal_result": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value"],
+          "properties": {
+            "value": {
+              "type": "string",
+              "pattern": "^-?(?:0|[1-9][0-9]*)\\.[0-9]{12}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unavailable_reason"],
+          "properties": {
+            "unavailable_reason": {
+              "enum": [
+                "zero_total_trades",
+                "zero_gross_loss",
+                "zero_winning_trades",
+                "zero_losing_trades",
+                "zero_average_losing_magnitude",
+                "zero_initial_deposit",
+                "zero_running_peak"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "input_content_digests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_summary",
+        "realized_execution_event_series",
+        "account_balance_event_series"
+      ],
+      "properties": {
+        "execution_summary": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        },
+        "realized_execution_event_series": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        },
+        "account_balance_event_series": {
+          "$ref": "urn:ea-research-lab:schema:common:1.0.0#/$defs/sha256_digest"
+        }
+      }
+    },
+    "aggregate_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "net_return",
+        "win_rate",
+        "loss_rate",
+        "expected_payoff",
+        "profit_factor",
+        "average_winning_result",
+        "average_losing_magnitude",
+        "payoff_ratio",
+        "gross_profit_return",
+        "gross_loss_return"
+      ],
+      "properties": {
+        "net_return": {"$ref": "#/$defs/decimal_result"},
+        "win_rate": {"$ref": "#/$defs/decimal_result"},
+        "loss_rate": {"$ref": "#/$defs/decimal_result"},
+        "expected_payoff": {"$ref": "#/$defs/decimal_result"},
+        "profit_factor": {"$ref": "#/$defs/decimal_result"},
+        "average_winning_result": {"$ref": "#/$defs/decimal_result"},
+        "average_losing_magnitude": {"$ref": "#/$defs/decimal_result"},
+        "payoff_ratio": {"$ref": "#/$defs/decimal_result"},
+        "gross_profit_return": {"$ref": "#/$defs/decimal_result"},
+        "gross_loss_return": {"$ref": "#/$defs/decimal_result"}
+      }
+    },
+    "distribution": {
+      "description": "Distribution of realized execution-event PnL. Mean absolute deviation is sum(abs(value - arithmetic_mean)) / count.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "count",
+        "minimum",
+        "maximum",
+        "arithmetic_mean",
+        "median",
+        "mean_absolute_deviation"
+      ],
+      "properties": {
+        "count": {"type": "integer", "minimum": 1},
+        "minimum": {"$ref": "#/$defs/decimal_result"},
+        "maximum": {"$ref": "#/$defs/decimal_result"},
+        "arithmetic_mean": {"$ref": "#/$defs/decimal_result"},
+        "median": {"$ref": "#/$defs/decimal_result"},
+        "mean_absolute_deviation": {"$ref": "#/$defs/decimal_result"}
+      }
+    },
+    "sequence": {
+      "description": "Streaks follow deterministic realized-event source order; zero outcomes break both streaks.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "longest_positive_streak",
+        "longest_negative_streak",
+        "zero_result_count"
+      ],
+      "properties": {
+        "longest_positive_streak": {"type": "integer", "minimum": 0},
+        "longest_negative_streak": {"type": "integer", "minimum": 0},
+        "zero_result_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "event_balance_analysis": {
+      "description": "Drawdown over observed event-indexed balances only; no continuous-path or equity claim is made.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_balance_max_drawdown"],
+      "properties": {
+        "event_balance_max_drawdown": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["amount", "rate"],
+          "properties": {
+            "amount": {"$ref": "#/$defs/decimal_result"},
+            "rate": {"$ref": "#/$defs/decimal_result"}
+          }
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_currency_consistent",
+        "input_evidence_manifest_consistent"
+      ],
+      "properties": {
+        "input_currency_consistent": {"const": true},
+        "input_evidence_manifest_consistent": {"const": true}
+      }
+    }
+  }
+}

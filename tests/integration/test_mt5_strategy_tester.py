@@ -3,16 +3,24 @@ from __future__ import annotations
 import hashlib
 import os
 import subprocess
+import tempfile
 import unittest
 from collections.abc import Mapping
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
 import ea_research_lab.infrastructure.mt5_strategy_tester as mt5_adapter
 from ea_research_lab.application.analysis import (
     AnalysisRequest,
+    analyze_execution_core,
     analyze_execution_summaries,
+)
+from ea_research_lab.application.build import (
+    BuildRequest,
+    BuildSourceInput,
+    BuildSourceSpecification,
+    execute_build,
 )
 from ea_research_lab.application.context import RequestContext
 from ea_research_lab.application.dataset import (
@@ -22,7 +30,7 @@ from ea_research_lab.application.dataset import (
 from ea_research_lab.application.execution import ExecutionRequest, execute_run
 from ea_research_lab.application.identity import new_entity_id
 from ea_research_lab.contracts import validate_document
-from ea_research_lab.domain.build import AcceptedArtifact
+from ea_research_lab.domain.build import AcceptedArtifact, BuildInputScope, BuildOutcome
 from ea_research_lab.domain.evidence import EvidenceCollectionOutcome
 from ea_research_lab.domain.execution import ExecutionProviderVerdict
 from ea_research_lab.domain.identifiers import (
@@ -49,8 +57,18 @@ from ea_research_lab.domain.values import (
     SchemaRef,
     SchemaVersion,
     Sha256Digest,
+    SourceRevision,
+    UtcTimestamp,
 )
-from ea_research_lab.infrastructure.mt5_report import Mt5ReportTransformer
+from ea_research_lab.infrastructure.metaeditor import (
+    MetaEditorConfiguration,
+    execute_metaeditor_build_attempt,
+)
+from ea_research_lab.infrastructure.mt5_report import (
+    Mt5AccountBalanceEventSeriesTransformer,
+    Mt5RealizedExecutionEventSeriesTransformer,
+    Mt5ReportTransformer,
+)
 from ea_research_lab.infrastructure.mt5_strategy_tester import (
     Mt5StrategyTesterConfiguration,
     Mt5StrategyTesterProvider,
@@ -60,6 +78,7 @@ from ea_research_lab.infrastructure.mt5_strategy_tester import (
 _TERMINAL = os.environ.get("EA_RESEARCH_LAB_MT5_TERMINAL")
 _DATA_ROOT = os.environ.get("EA_RESEARCH_LAB_MT5_DATA_ROOT")
 _ARTIFACT = os.environ.get("EA_RESEARCH_LAB_MT5_ARTIFACT")
+_METAEDITOR = os.environ.get("EA_RESEARCH_LAB_METAEDITOR")
 _ENVIRONMENT_KEYS = (
     "SystemRoot",
     "WINDIR",
@@ -389,6 +408,332 @@ class Mt5StrategyTesterIntegrationTests(unittest.TestCase):
             "Visual=0",
         ):
             self.assertIn(setting, config)
+        self.assertFalse(self._related_processes_present())
+
+
+@unittest.skipUnless(
+    os.environ.get("EA_RESEARCH_LAB_MT5_INTEGRATION") == "1"
+    and os.environ.get("EA_RESEARCH_LAB_METAEDITOR_INTEGRATION") == "1",
+    "controlled Phase 05 MT5 integration is not enabled",
+)
+class Phase05Mt5DatasetIntegrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        if os.environ.get("EA_RESEARCH_LAB_MT5_CONTROLLED_ACTIVITY_FIXTURE") != "1":
+            raise unittest.SkipTest(
+                "controlled known-activity fixture is not acknowledged"
+            )
+        if not _TERMINAL or not _DATA_ROOT or not _METAEDITOR:
+            raise unittest.SkipTest(
+                "terminal, data root, and MetaEditor are not configured"
+            )
+        cls.terminal = Path(_TERMINAL)
+        cls.data_root = Path(_DATA_ROOT)
+        cls.metaeditor = Path(_METAEDITOR)
+        cls.source = (
+            Path(__file__).parents[1]
+            / "fixtures"
+            / "mt5"
+            / "phase05-known-activity.mq5"
+        )
+        if not all(
+            (
+                cls.terminal.is_file(),
+                cls.data_root.is_dir(),
+                cls.metaeditor.is_file(),
+                cls.source.is_file(),
+            )
+        ):
+            raise unittest.SkipTest("configured integration files are unavailable")
+        if cls._related_processes_present():
+            raise unittest.SkipTest(
+                "existing MT5 or MetaEditor processes make ownership ambiguous"
+            )
+
+    @staticmethod
+    def _related_processes_present() -> bool:
+        return any(
+            image in subprocess.run(
+                ["tasklist", "/FI", f"IMAGENAME eq {image}", "/FO", "CSV", "/NH"],
+                check=False,
+                capture_output=True,
+                text=True,
+                errors="replace",
+            ).stdout
+            for image in ("MetaEditor64.exe", "terminal64.exe", "metatester64.exe")
+        )
+
+    @staticmethod
+    def _environment() -> dict[str, str]:
+        return {
+            key: os.environ[key]
+            for key in _ENVIRONMENT_KEYS
+            if os.environ.get(key)
+        }
+
+    def test_known_activity_run_produces_analysis_core_result(self) -> None:
+        environment = self._environment()
+        metaeditor_configuration = MetaEditorConfiguration(
+            self.metaeditor,
+            Sha256Digest(hashlib.sha256(self.metaeditor.read_bytes()).hexdigest()),
+            environment,
+        )
+        build_request = BuildRequest(
+            RequestContext(new_entity_id(RequestId), "phase05-mt5-build"),
+            new_entity_id(BuildRecordId),
+            SourceRevision(
+                "git", "ea-research-lab", "phase05-known-activity", True
+            ),
+            BuildSourceSpecification(
+                BuildSourceInput(
+                    BuildInputScope.WORKSPACE,
+                    "Main.mq5",
+                    self.source.read_bytes(),
+                )
+            ),
+            new_entity_id(EnvironmentConfigurationId),
+            metaeditor_configuration.payload,
+            timedelta(seconds=30),
+        )
+        with tempfile.TemporaryDirectory(prefix="earl-phase05-integration-") as name:
+            build = execute_build(
+                build_request,
+                lambda active: execute_metaeditor_build_attempt(
+                    active,
+                    configuration=metaeditor_configuration,
+                    workspace_parent=Path(name),
+                    logical_name="phase05-known-activity",
+                    artifact_version="integration-1",
+                    built_at=UtcTimestamp(datetime.now(UTC)),
+                ),
+            )
+        self.assertIs(build.outcome, BuildOutcome.SUCCEEDED)
+        self.assertIsNotNone(build.artifact_acceptance)
+        artifact = build.artifact_acceptance.artifact
+
+        terminal_configuration = Mt5StrategyTesterConfiguration(
+            self.terminal,
+            Sha256Digest(hashlib.sha256(self.terminal.read_bytes()).hexdigest()),
+            self.data_root,
+            environment,
+            "main",
+            "demo",
+        )
+        execution = {
+            "schema_name": "mt5-strategy-tester-execution",
+            "schema_version": "0.1.0",
+            "provider": "metatrader5-strategy-tester",
+            "symbol": "EURUSD",
+            "period": "M1",
+            "model": 1,
+            "execution_mode": 0,
+            "from_date": "2026-08-03",
+            "to_date": "2026-08-04",
+            "deposit": 10000,
+            "currency": "USD",
+            "leverage": "1:100",
+        }
+        definition = SchemaReferencedPayload(
+            _ref("test-definition"),
+            {
+                "schema_name": "test-definition",
+                "schema_version": "0.1.0",
+                "test_definition_id": str(new_entity_id(TestDefinitionId)),
+                "test_definition_revision_id": str(
+                    new_entity_id(TestDefinitionRevisionId)
+                ),
+                "artifact_id": str(artifact.artifact_id),
+                "execution_configuration": {
+                    "schema_ref": str(_ref("mt5-strategy-tester-execution")),
+                    "value": execution,
+                },
+                "sut_inputs": {
+                    "schema_ref": (
+                        "urn:ea-research-lab:schema:controlled-empty-inputs:0.1.0"
+                    ),
+                    "value": {},
+                },
+            },
+        )
+        execution_request = ExecutionRequest(
+            RequestContext(new_entity_id(RequestId), "phase05-mt5-run"),
+            new_entity_id(RunId),
+            artifact,
+            definition,
+            new_entity_id(EnvironmentConfigurationId),
+            terminal_configuration.payload,
+            timedelta(seconds=90),
+        )
+        run = execute_run(
+            Mt5StrategyTesterProvider(terminal_configuration),
+            execution_request,
+            ReproducibilityAssessment(
+                ReproducibilityLevel.BEST_EFFORT,
+                (
+                    ReproducibilityReason(
+                        "provider_replay_not_guaranteed",
+                        "The external provider does not guarantee bitwise replay.",
+                    ),
+                ),
+            ),
+        )
+        self.assertIsNone(run.failure)
+        self.assertEqual(run.run_manifest.value["status"], "completed")
+        self.assertIs(
+            run.evidence_manifest.outcome, EvidenceCollectionOutcome.COMPLETED
+        )
+        evidence = EvidenceProvenance(
+            run.evidence_manifest, run.evidence_manifest_ref
+        )
+        summary_outcome = transform_dataset(
+            Mt5ReportTransformer(),
+            TransformationRequest(
+                execution_request.context,
+                evidence,
+                run.raw_evidence,
+                new_entity_id(TransformationId),
+                DefinitionVersion("mt5-execution-summary-1"),
+            ),
+        )
+        realized_outcome = transform_dataset(
+            Mt5RealizedExecutionEventSeriesTransformer(),
+            TransformationRequest(
+                execution_request.context,
+                evidence,
+                run.raw_evidence,
+                new_entity_id(TransformationId),
+                DefinitionVersion("mt5-realized-execution-event-series-1"),
+            ),
+        )
+        balances_outcome = transform_dataset(
+            Mt5AccountBalanceEventSeriesTransformer(),
+            TransformationRequest(
+                execution_request.context,
+                evidence,
+                run.raw_evidence,
+                new_entity_id(TransformationId),
+                DefinitionVersion("mt5-account-balance-event-series-1"),
+            ),
+        )
+        self.assertIsNone(
+            summary_outcome.failure,
+            repr(summary_outcome.failure.cause)
+            if summary_outcome.failure
+            else None,
+        )
+        self.assertIsNone(
+            realized_outcome.failure,
+            repr(realized_outcome.failure.cause)
+            if realized_outcome.failure
+            else None,
+        )
+        self.assertIsNone(
+            balances_outcome.failure,
+            repr(balances_outcome.failure.cause)
+            if balances_outcome.failure
+            else None,
+        )
+        summary = summary_outcome.dataset
+        realized = realized_outcome.dataset
+        balances = balances_outcome.dataset
+
+        self.assertEqual(
+            [event["realized_pnl"] for event in realized.content.payload.value["events"]],
+            ["-0.04", "0.42"],
+        )
+        self.assertEqual(
+            [
+                observation["balance"]
+                for observation in balances.content.payload.value["observations"]
+            ],
+            ["10000.00", "10000.00", "9999.96", "9999.96", "10000.38"],
+        )
+        for dataset in (summary, realized, balances):
+            validate_document(_plain(dataset.content.payload.value))
+            validate_document(_plain(dataset.manifest.value))
+            self.assertEqual(
+                dataset.provenance.input_manifests,
+                (run.evidence_manifest_ref,),
+            )
+
+        analysis = analyze_execution_core(
+            AnalysisRequest(
+                execution_request.context,
+                (summary, realized, balances),
+                new_entity_id(AnalysisDefinitionId),
+                DefinitionVersion("execution-core-analysis-1"),
+                SchemaReferencedPayload(
+                    _ref("execution-core-analysis-parameters"),
+                    {
+                        "schema_name": "execution-core-analysis-parameters",
+                        "schema_version": "0.1.0",
+                    },
+                ),
+                new_entity_id(EnvironmentConfigurationId),
+            )
+        )
+        self.assertIsNone(
+            analysis.failure,
+            repr(analysis.failure.cause) if analysis.failure else None,
+        )
+        result = analysis.result
+        self.assertIsNotNone(result)
+        content = result.content.payload.value
+        self.assertEqual(
+            content["aggregate_metrics"],
+            {
+                "net_return": {"value": "0.000038000000"},
+                "win_rate": {"value": "0.500000000000"},
+                "loss_rate": {"value": "0.500000000000"},
+                "expected_payoff": {"value": "0.190000000000"},
+                "profit_factor": {"value": "10.500000000000"},
+                "average_winning_result": {"value": "0.420000000000"},
+                "average_losing_magnitude": {"value": "0.040000000000"},
+                "payoff_ratio": {"value": "10.500000000000"},
+                "gross_profit_return": {"value": "0.000042000000"},
+                "gross_loss_return": {"value": "0.000004000000"},
+            },
+        )
+        self.assertEqual(
+            content["realized_execution_distribution"],
+            {
+                "count": 2,
+                "minimum": {"value": "-0.040000000000"},
+                "maximum": {"value": "0.420000000000"},
+                "arithmetic_mean": {"value": "0.190000000000"},
+                "median": {"value": "0.190000000000"},
+                "mean_absolute_deviation": {"value": "0.230000000000"},
+            },
+        )
+        self.assertEqual(
+            content["realized_execution_sequence"],
+            {
+                "longest_positive_streak": 1,
+                "longest_negative_streak": 1,
+                "zero_result_count": 0,
+            },
+        )
+        self.assertEqual(
+            content["event_balance_analysis"]["event_balance_max_drawdown"],
+            {
+                "amount": {"value": "0.040000000000"},
+                "rate": {"value": "0.000004000000"},
+            },
+        )
+        self.assertEqual(
+            content["input_content_digests"],
+            {
+                "execution_summary": str(summary.content.content_digest),
+                "realized_execution_event_series": str(
+                    realized.content.content_digest
+                ),
+                "account_balance_event_series": str(
+                    balances.content.content_digest
+                ),
+            },
+        )
+        validate_document(_plain(content))
+        validate_document(_plain(result.envelope.value))
         self.assertFalse(self._related_processes_present())
 
 

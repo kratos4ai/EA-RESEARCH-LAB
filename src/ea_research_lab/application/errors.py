@@ -23,6 +23,8 @@ class ApplicationErrorCode(StrEnum):
     EXECUTION_PROVIDER_FAILED = "execution_provider_failed"
     DATASET_TRANSFORMATION_FAILED = "dataset_transformation_failed"
     ANALYSIS_FAILED = "analysis_failed"
+    DATA_PLANE_FAILED = "data_plane_failed"
+    DATA_INTEGRITY_FAILED = "data_integrity_failed"
 
 
 def _freeze_json(value: object) -> object:

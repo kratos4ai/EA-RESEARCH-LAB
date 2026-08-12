@@ -55,7 +55,13 @@ class DependencyBoundaryTests(unittest.TestCase):
     def test_only_approved_orchestration_uses_contracts_from_application(self) -> None:
         violations = []
         for path in sorted((PACKAGE_ROOT / "application").glob("*.py")):
-            if path.name in {"analysis.py", "build.py", "dataset.py", "execution.py"}:
+            if path.name in {
+                "analysis.py",
+                "build.py",
+                "data_plane.py",
+                "dataset.py",
+                "execution.py",
+            }:
                 continue
             for module, line in _imports(path):
                 if module == "ea_research_lab.contracts" or module.startswith(
@@ -279,6 +285,7 @@ class DependencyBoundaryTests(unittest.TestCase):
                 "metaeditor.py",
                 "mt5_report.py",
                 "mt5_strategy_tester.py",
+                "sqlite_data_plane.py",
             }:
                 continue
             for module, line in _imports(path):
@@ -344,6 +351,83 @@ class DependencyBoundaryTests(unittest.TestCase):
             "persistence",
         )
         self.assertEqual([term for term in forbidden if term in source], [])
+
+    def test_data_plane_boundary_is_storage_neutral_and_narrow(self) -> None:
+        path = PACKAGE_ROOT / "application/data_plane.py"
+        text = path.read_text(encoding="utf-8")
+        source = text.lower()
+        forbidden = (
+            "sqlite",
+            "pathlib",
+            "select ",
+            "insert ",
+            "update ",
+            "delete ",
+            "cursor",
+            "connection",
+            "database path",
+            "content_objects",
+            "published_records",
+            "document_digest",
+            "record_kind",
+        )
+        self.assertEqual([term for term in forbidden if term in source], [])
+
+        tree = ast.parse(text, filename=str(path))
+        port = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "DataPlane"
+        )
+        methods = {
+            node.name for node in port.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertEqual(
+            methods,
+            {
+                "publish_build",
+                "load_build",
+                "publish_run",
+                "load_run",
+                "publish_dataset",
+                "load_dataset",
+                "publish_analysis",
+                "load_analysis",
+            },
+        )
+
+        reconstruction = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == "reconstruct_canonical_chain"
+        )
+        data_plane_calls = {
+            node.func.attr
+            for node in ast.walk(reconstruction)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "data_plane"
+        }
+        self.assertEqual(
+            data_plane_calls,
+            {"load_build", "load_run", "load_dataset", "load_analysis"},
+        )
+        classes = {
+            node.name for node in tree.body if isinstance(node, ast.ClassDef)
+        }
+        self.assertTrue(
+            classes.isdisjoint({"ProvenanceService", "LineageEngine"})
+        )
+
+    def test_sqlite_is_confined_to_the_data_plane_adapter(self) -> None:
+        users = set()
+        for path in PACKAGE_ROOT.rglob("*.py"):
+            for module, _ in _imports(path):
+                if module.split(".", 1)[0] == "sqlite3":
+                    users.add(path.relative_to(PACKAGE_ROOT).as_posix())
+        self.assertEqual(users, {"infrastructure/sqlite_data_plane.py"})
 
     def test_build_workflow_does_not_introduce_future_capabilities(self) -> None:
         source = (PACKAGE_ROOT / "application/build.py").read_text(

@@ -96,3 +96,56 @@ Persisted objects retain the schema identity and version under which they were c
 ## Boundary
 
 Physical storage types, paths, tables, and vendor APIs must not leak into semantic or Platform API contracts. Other planes access persisted state only through explicit Data Plane ports.
+
+## Implemented Phase 06 boundary
+
+Phase 06 M1 introduced durable Build publication and loading. M2 extends the
+same storage-neutral `DataPlane` application port with capability-specific
+publication/loading for finalized Runs and sealed Raw Evidence, Datasets, and
+Analysis Results. No listing, search, traversal, or semantic query capability
+is part of this boundary.
+
+The initial infrastructure adapter uses one local SQLite database through the
+Python standard library. It retains canonical contract documents separately
+from content-addressed binary objects, validates exact local schema versions,
+and verifies identities, hashes, lengths, and Build provenance on publication
+and load. One Build publication is one transaction. Published records and
+content are immutable; exact duplicate publication is idempotent and conflicts
+fail closed. Downstream publication requires its upstream durable references:
+Run requires its Artifact, Dataset requires its evidence or input Datasets,
+and Analysis requires exact Dataset identities and content digests.
+
+Raw Evidence bytes remain exact BLOBs and evidence revisions remain separate
+immutable manifests linked only through their existing `prior_manifest`
+references. Dataset and Analysis canonical JSON bytes are retained under their
+declared SHA-256 identities; persistence neither reruns transformations nor
+recomputes analysis semantics.
+
+SQLite paths, tables, SQL, transactions, and exceptions remain private to the
+adapter. The supported concurrency model is local SQLite writer serialization:
+an overlapping writer may fail safely because M1 adds neither retries nor
+distributed coordination. Source snapshot bytes are not retained; the Build
+Input Manifest preserves historical content identity according to ADR-0010.
+
+Fresh-state canonical reconstruction accepts explicit Build, Run, and Analysis
+Result identities and follows only references already present in their durable
+records. It cross-validates the Build/Artifact, Run/Test Definition/Evidence,
+Dataset/Evidence, and Analysis/Dataset relationships through the `DataPlane`
+port. This is an integrity operation for one known chain, not a listing,
+search, reverse lookup, lineage projection, or semantic query capability.
+
+Reconstruction verifies persisted identities, exact bytes, schemas, digests,
+and provenance links. It does not rerun a build or execution, reproduce a
+Dataset transformation, or recompute analytical results. Those computations
+retain their existing plane ownership; Data Plane integrity only establishes
+that the persisted outputs form the same explicit canonical chain.
+
+Malformed documents, changed bytes, conflicting identities, broken references,
+and cross-capability substitutions fail closed. The adapter does not repair,
+migrate, relink, or choose replacement content.
+
+The current adapter remains intentionally local: it has SQLite locking but no
+retry/concurrency framework, migrations, repair, backup, retention, garbage
+collection, distributed storage, or privileged-write authenticity mechanism.
+It does not archive source snapshot bytes. Schema wheel packaging and the
+direct use of transitively installed `referencing` remain deferred follow-ups.

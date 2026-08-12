@@ -4,6 +4,10 @@ The target state is intentionally broader than the first implementation phase.
 
 Request/dependency topology and the research data lifecycle are separate views. Neither diagram implies that all capabilities must be implemented in an early phase.
 
+Roadmap sequencing establishes the durable Data Plane before the Semantic
+Layer and Platform API. This delivery order does not change their responsibility
+boundaries or dependency direction.
+
 ## Target request and dependency topology
 
 ```text

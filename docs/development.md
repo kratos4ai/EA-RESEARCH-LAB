@@ -125,14 +125,13 @@ Event names use lowercase dot-separated segments. Correlation identifiers retain
 
 Operational logs describe platform operation and debugging. They are not Raw Evidence and are not future Audit Records. Phase 02 introduces neither audit persistence nor an audit lifecycle and does not log source bytes, Artifact bytes, compiler logs, provider payloads, or physical paths automatically.
 
-The current runtime contains the Phase 01 foundation, the Phase 02 Build and
-Artifact pipeline, the Phase 03 in-memory Run and Evidence workflow, and the
-Phase 04 deterministic Dataset and initial Analysis slice. The application
-finalizes a Run, seals bounded captured outputs as immutable Raw Evidence,
-transforms the empirically supported MT5 report into an `execution-summary`
-Dataset, and computes the three approved ratios and explicit baseline deltas.
-All products remain in memory. There is no persistence, Data Plane runtime,
-Platform API, Semantic Layer runtime, UI, or MCP implementation or scaffolding.
+The current runtime contains the Phase 01 foundation through the Phase 06
+local Data Plane. The application builds an Artifact, finalizes a Run, seals
+bounded captured outputs as immutable Raw Evidence, deterministically produces
+the three implemented Dataset products and Analysis Core Result, and persists
+the exact canonical chain in SQLite. A fresh adapter can reconstruct one known
+chain from explicit Build, Run, and Analysis Result identities. There is no
+Platform API, Semantic Layer runtime, UI, MCP, listing, or search capability.
 
 Phase 04 report parsing is intentionally limited to the observed English
 UTF-16LE-with-BOM Strategy Tester HTML shape and exact required labels.
@@ -141,11 +140,27 @@ malformed decimals/counts, and contradictory trade counts fail closed. The
 parser consumes captured Raw Evidence bytes and never reopens the provider
 filesystem.
 
-Phase 04 is complete. Its controlled provider validation is limited to the
-currently tested MT5 version in explicit main mode with a previously provisioned
-Demo context. Portable-mode tester success is not proven, EX5 recompilation is
-not assumed byte-deterministic, execution and evidence remain in memory, and no
-deterministic replay guarantee or durable persistence is claimed. Phase 02
-dependency-discovery and build follow-ups, wheel packaging of external schemas,
-and direct use of the transitively installed `referencing` package remain
-non-blocking follow-ups.
+The controlled persisted vertical remains limited to MetaEditor/MT5
+`5.0.0.6104`, explicit main mode, an already provisioned Demo context, and the
+disposable known-activity fixture. Enable exactly that opt-in proof with:
+
+```powershell
+$env:EA_RESEARCH_LAB_METAEDITOR = '<installation>\MetaEditor64.exe'
+$env:EA_RESEARCH_LAB_METAEDITOR_INTEGRATION = '1'
+$env:EA_RESEARCH_LAB_MT5_TERMINAL = '<installation>\terminal64.exe'
+$env:EA_RESEARCH_LAB_MT5_DATA_ROOT = '<expected-main-mode-data-root>'
+$env:EA_RESEARCH_LAB_MT5_CONTROLLED_ACTIVITY_FIXTURE = '1'
+$env:EA_RESEARCH_LAB_MT5_INTEGRATION = '1'
+python -m unittest tests.integration.test_mt5_strategy_tester.Phase06PersistedMt5IntegrationTests -v
+```
+
+The test uses disposable Build and SQLite workspaces, closes the database,
+discards runtime aggregates, reconstructs through a fresh Data Plane adapter,
+and confirms that no related provider process remains. Reload does not rerun
+Build, execution, Dataset transformations, or Analysis computation.
+
+Portable-mode tester success is not proven, EX5 recompilation is not assumed
+byte-deterministic, and no deterministic provider replay guarantee is claimed.
+Phase 02 dependency-discovery and build follow-ups, wheel packaging of external
+schemas, and direct use of the transitively installed `referencing` package
+remain non-blocking follow-ups.

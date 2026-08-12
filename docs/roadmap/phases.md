@@ -30,24 +30,29 @@ realized-event distribution, simple ordered-event sequences, and observed
 event-balance drawdown. Broader timeseries, stability, and comparison remain
 later work when their required evidence semantics exist.
 
-## Phase 06 — Semantic Layer & Platform API Query Capability
+## Phase 06 — Data Plane & Persistence
 
-Planning prerequisite: resolve durable Data Plane runtime and persistence
-ownership explicitly. Phase 05 does not make that decision.
+Persist the implemented canonical research chain behind Data Plane ports while
+preserving immutable content, exact schema versions, storage integrity, and
+provenance across process restarts.
 
-Define stable semantic contracts for Run, Artifact, Dataset, Metric, Timeseries, Distribution, Analysis, and Comparison, and expose bounded retrieval through the Query capability of the Platform API.
+## Phase 07 — Semantic Layer & Platform API
 
-## Phase 07 — Visual Analytics
+Define stable semantic contracts for Run, Artifact, Dataset, Metric, Timeseries,
+Distribution, Analysis, and Comparison, and expose bounded retrieval through
+the Query capability of the Platform API.
+
+## Phase 08 — Visual Analytics
 
 Build the research workbench over the Query capability of the Platform API and its semantic contracts.
 
-## Phase 08 — MCP Adapter
+## Phase 09 — MCP Adapter
 
 Expose read-only semantic exploration to Codex/agents.
 
 Later add controlled command tools.
 
-## Phase 09 — Advanced Research Analytics
+## Phase 10 — Advanced Research Analytics
 
 Bootstrap, Monte Carlo, sensitivity, confidence intervals, clustering, regime/time segmentation, and large experiment matrices.
 

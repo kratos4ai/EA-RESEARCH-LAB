@@ -17,9 +17,15 @@ The platform treats every Expert Advisor as a **System Under Test (SUT)**.
 
 ## Current implementation status
 
-The repository currently contains the Phase 01 foundation: typed domain values, immutable provenance and evidence models, exact versioned schemas with local validation, transport-neutral request context, minimal configuration, structured operational logging, and automated architecture checks.
+The repository currently contains the implemented Phase 01–06 vertical:
+typed foundations, real controlled MetaEditor/MT5 adapters, immutable Build and
+Run evidence, deterministic Dataset/Analysis products, and a local SQLite Data
+Plane that persists and reconstructs the complete canonical chain with exact
+schema, identity, digest, and provenance verification.
 
-BuildProvider, ExecutionProvider, MetaTrader/MetaEditor integration, persistence, analytical computation, Platform API runtime, UI, and MCP remain later-phase work. Phase 01 is complete.
+The Semantic Layer, Platform API, visual analytics, UI, and MCP remain future
+phases. Phase 06 is implemented and awaiting final review/approval; Phase 07
+has not started.
 
 ## Core principle
 
@@ -38,6 +44,5 @@ The platform does **not** understand:
 3. `docs/architecture/principles.md`
 4. `docs/roadmap/target-state.md`
 5. `docs/roadmap/phases.md`
-6. `plans/active/phase-01-foundation.md`
-7. `plans/active/phase-01-execution-plan.md`
-8. `docs/development.md`
+6. `plans/active/phase-06-execution-plan.md`
+7. `docs/development.md`

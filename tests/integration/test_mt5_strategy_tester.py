@@ -23,6 +23,12 @@ from ea_research_lab.application.build import (
     execute_build,
 )
 from ea_research_lab.application.context import RequestContext
+from ea_research_lab.application.data_plane import (
+    CanonicalChainRequest,
+    DurableBuild,
+    DurableRun,
+    reconstruct_canonical_chain,
+)
 from ea_research_lab.application.dataset import (
     TransformationRequest,
     transform_dataset,
@@ -35,6 +41,7 @@ from ea_research_lab.domain.evidence import EvidenceCollectionOutcome
 from ea_research_lab.domain.execution import ExecutionProviderVerdict
 from ea_research_lab.domain.identifiers import (
     AnalysisDefinitionId,
+    AnalysisResultId,
     ArtifactId,
     BuildRecordId,
     EnvironmentConfigurationId,
@@ -73,6 +80,7 @@ from ea_research_lab.infrastructure.mt5_strategy_tester import (
     Mt5StrategyTesterConfiguration,
     Mt5StrategyTesterProvider,
 )
+from ea_research_lab.infrastructure.sqlite_data_plane import SqliteDataPlane
 
 
 _TERMINAL = os.environ.get("EA_RESEARCH_LAB_MT5_TERMINAL")
@@ -416,7 +424,7 @@ class Mt5StrategyTesterIntegrationTests(unittest.TestCase):
     and os.environ.get("EA_RESEARCH_LAB_METAEDITOR_INTEGRATION") == "1",
     "controlled Phase 05 MT5 integration is not enabled",
 )
-class Phase05Mt5DatasetIntegrationTests(unittest.TestCase):
+class Phase06PersistedMt5IntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         if os.environ.get("EA_RESEARCH_LAB_MT5_CONTROLLED_ACTIVITY_FIXTURE") != "1":
@@ -471,7 +479,7 @@ class Phase05Mt5DatasetIntegrationTests(unittest.TestCase):
             if os.environ.get(key)
         }
 
-    def test_known_activity_run_produces_analysis_core_result(self) -> None:
+    def test_known_activity_vertical_survives_persistence_and_reload(self) -> None:
         environment = self._environment()
         metaeditor_configuration = MetaEditorConfiguration(
             self.metaeditor,
@@ -734,6 +742,132 @@ class Phase05Mt5DatasetIntegrationTests(unittest.TestCase):
         )
         validate_document(_plain(content))
         validate_document(_plain(result.envelope.value))
+        expected = {
+            "build_id": str(build.build_record.value["build_record_id"]),
+            "run_id": str(run.run_manifest.value["run_id"]),
+            "analysis_id": str(result.provenance.analysis_result_id),
+            "artifact_bytes": artifact.content,
+            "artifact_digest": str(artifact.binary_digest),
+            "evidence": tuple(
+                (
+                    item.content,
+                    str(item.evidence_object.content_digest),
+                )
+                for item in run.raw_evidence
+            ),
+            "manifest_ref": (
+                str(run.evidence_manifest_ref.manifest_id),
+                str(run.evidence_manifest_ref.run_id),
+                str(run.evidence_manifest_ref.content_digest),
+            ),
+            "dataset_ids": frozenset(
+                str(dataset.provenance.dataset_id)
+                for dataset in (summary, realized, balances)
+            ),
+            "datasets": frozenset(
+                (
+                    dataset.content.canonical_bytes,
+                    str(dataset.content.content_digest),
+                )
+                for dataset in (summary, realized, balances)
+            ),
+            "analysis_bytes": result.content.canonical_bytes,
+            "analysis_digest": str(result.content.content_digest),
+        }
+        with tempfile.TemporaryDirectory(
+            prefix="earl-phase06-data-plane-"
+        ) as data_name:
+            database = Path(data_name) / "lab.sqlite3"
+            with SqliteDataPlane(database) as data_plane:
+                data_plane.publish_build(DurableBuild.from_workflow_result(build))
+                data_plane.publish_run(
+                    DurableRun.from_execution_result(definition, run)
+                )
+                for dataset in (summary, realized, balances):
+                    data_plane.publish_dataset(dataset)
+                data_plane.publish_analysis(result)
+
+            del build, artifact, run, evidence, summary, realized, balances
+            del analysis, result, content, definition, execution_request
+            del summary_outcome, realized_outcome, balances_outcome
+            del build_request, terminal_configuration, metaeditor_configuration
+
+            roots = CanonicalChainRequest(
+                BuildRecordId.parse(expected["build_id"]),
+                RunId.parse(expected["run_id"]),
+                AnalysisResultId.parse(expected["analysis_id"]),
+            )
+            with (
+                patch(
+                    "ea_research_lab.application.build.execute_build",
+                    side_effect=AssertionError("Build must not rerun."),
+                ),
+                patch(
+                    "ea_research_lab.application.execution.execute_run",
+                    side_effect=AssertionError("Execution must not rerun."),
+                ),
+                patch(
+                    "ea_research_lab.application.dataset.transform_dataset",
+                    side_effect=AssertionError("Transformation must not rerun."),
+                ),
+                patch(
+                    "ea_research_lab.application.analysis.analyze_execution_summaries",
+                    side_effect=AssertionError("Analysis must not rerun."),
+                ),
+                patch(
+                    "ea_research_lab.application.analysis.analyze_execution_core",
+                    side_effect=AssertionError("Analysis must not rerun."),
+                ),
+                SqliteDataPlane(database) as fresh_data_plane,
+            ):
+                chain = reconstruct_canonical_chain(fresh_data_plane, roots)
+
+            loaded_artifact = chain.build.artifact_acceptance.artifact
+            self.assertEqual(loaded_artifact.content, expected["artifact_bytes"])
+            self.assertEqual(
+                str(loaded_artifact.binary_digest), expected["artifact_digest"]
+            )
+            self.assertEqual(
+                tuple(
+                    (
+                        item.content,
+                        str(item.evidence_object.content_digest),
+                    )
+                    for revision in chain.run.evidence_history
+                    for item in revision.raw_evidence
+                ),
+                expected["evidence"],
+            )
+            self.assertEqual(
+                (
+                    str(chain.run.evidence_history[-1].reference.manifest_id),
+                    str(chain.run.evidence_history[-1].reference.run_id),
+                    str(chain.run.evidence_history[-1].reference.content_digest),
+                ),
+                expected["manifest_ref"],
+            )
+            self.assertEqual(
+                {str(item.provenance.dataset_id) for item in chain.datasets},
+                expected["dataset_ids"],
+            )
+            self.assertEqual(
+                {
+                    (
+                        item.content.canonical_bytes,
+                        str(item.content.content_digest),
+                    )
+                    for item in chain.datasets
+                },
+                expected["datasets"],
+            )
+            self.assertEqual(
+                chain.analysis.content.canonical_bytes,
+                expected["analysis_bytes"],
+            )
+            self.assertEqual(
+                str(chain.analysis.content.content_digest),
+                expected["analysis_digest"],
+            )
         self.assertFalse(self._related_processes_present())
 
 

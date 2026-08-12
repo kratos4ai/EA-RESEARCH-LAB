@@ -125,13 +125,13 @@ Event names use lowercase dot-separated segments. Correlation identifiers retain
 
 Operational logs describe platform operation and debugging. They are not Raw Evidence and are not future Audit Records. Phase 02 introduces neither audit persistence nor an audit lifecycle and does not log source bytes, Artifact bytes, compiler logs, provider payloads, or physical paths automatically.
 
-The current runtime contains the Phase 01 foundation through the Phase 06
-local Data Plane. The application builds an Artifact, finalizes a Run, seals
-bounded captured outputs as immutable Raw Evidence, deterministically produces
-the three implemented Dataset products and Analysis Core Result, and persists
-the exact canonical chain in SQLite. A fresh adapter can reconstruct one known
-chain from explicit Build, Run, and Analysis Result identities. There is no
-Platform API, Semantic Layer runtime, UI, MCP, listing, or search capability.
+The current runtime contains the Phase 01 foundation through the Phase 07
+transport-neutral Platform API. Its four Commands build, execute, transform,
+analyze, and publish through the existing application/Data Plane boundaries.
+Its seven Queries provide bounded Run, Dataset, Analysis, and canonical
+provenance projections after integrity-checked loads. SQLite remains behind the
+Data Plane and bounded discovery adapters. There is no network transport, UI,
+MCP, arbitrary search, or persisted semantic projection.
 
 Phase 04 report parsing is intentionally limited to the observed English
 UTF-16LE-with-BOM Strategy Tester HTML shape and exact required labels.
@@ -140,7 +140,7 @@ malformed decimals/counts, and contradictory trade counts fail closed. The
 parser consumes captured Raw Evidence bytes and never reopens the provider
 filesystem.
 
-The controlled persisted vertical remains limited to MetaEditor/MT5
+The controlled persisted Platform API vertical remains limited to MetaEditor/MT5
 `5.0.0.6104`, explicit main mode, an already provisioned Demo context, and the
 disposable known-activity fixture. Enable exactly that opt-in proof with:
 
@@ -151,13 +151,15 @@ $env:EA_RESEARCH_LAB_MT5_TERMINAL = '<installation>\terminal64.exe'
 $env:EA_RESEARCH_LAB_MT5_DATA_ROOT = '<expected-main-mode-data-root>'
 $env:EA_RESEARCH_LAB_MT5_CONTROLLED_ACTIVITY_FIXTURE = '1'
 $env:EA_RESEARCH_LAB_MT5_INTEGRATION = '1'
-python -m unittest tests.integration.test_mt5_strategy_tester.Phase06PersistedMt5IntegrationTests -v
+python -m unittest tests.integration.test_mt5_strategy_tester.PlatformApiMt5IntegrationTests -v
 ```
 
-The test uses disposable Build and SQLite workspaces, closes the database,
-discards runtime aggregates, reconstructs through a fresh Data Plane adapter,
-and confirms that no related provider process remains. Reload does not rerun
-Build, execution, Dataset transformations, or Analysis computation.
+The test uses disposable Build and SQLite workspaces and invokes the complete
+real lifecycle through `PlatformApi`. It closes persistence, discards the
+original runtime objects, constructs a fresh `PlatformApi`, and verifies all
+seven Queries and canonical provenance without rerunning Build, execution,
+Dataset transformations, or Analysis. It also confirms that no related provider
+process remains.
 
 Portable-mode tester success is not proven, EX5 recompilation is not assumed
 byte-deterministic, and no deterministic provider replay guarantee is claimed.

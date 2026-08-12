@@ -38,9 +38,13 @@ provenance across process restarts.
 
 ## Phase 07 — Semantic Layer & Platform API
 
-Define stable semantic contracts for Run, Artifact, Dataset, Metric, Timeseries,
-Distribution, Analysis, and Comparison, and expose bounded retrieval through
-the Query capability of the Platform API.
+Expose the implemented Build, Run, Dataset, Analysis, and canonical provenance
+capabilities through one typed, in-process Platform API. Provider-neutral
+summary/detail projections and bounded keyset discovery support progressive
+research inspection without exposing bulk content or introducing a network
+transport. Broader Metric, Timeseries, Distribution, and Comparison projections
+remain tied to future implemented analytical contracts rather than being
+declared speculatively.
 
 ## Phase 08 — Visual Analytics
 

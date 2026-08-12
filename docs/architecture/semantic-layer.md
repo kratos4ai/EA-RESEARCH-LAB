@@ -100,3 +100,31 @@ Responses need not duplicate the entire graph, but no projection may make its re
 ## Semantic neutrality
 
 Provider-specific observations are either translated by an adapter into genuinely provider-neutral concepts or retained under an explicit provider namespace. SUT-specific payloads remain opaque and schema-identified. Neither becomes shared core vocabulary merely because it appears in telemetry or a provider report.
+
+## Implemented Phase 07 boundary
+
+The implemented Semantic Layer consists of immutable, provider-neutral summary,
+detail, and canonical provenance projections. These values are derived on demand
+and have no independent identity or persisted representation.
+
+`ResearchQueryPort` performs only bounded identity discovery through three
+operations: Runs, a Run's directly evidenced Datasets, and Analyses that consume
+an exact Dataset identity/digest. Keyset pagination uses opaque cursors and
+returns only `items` and `next_cursor`; it has no counts, offsets, arbitrary
+filters, or caller-defined sorting. Every discovered identity is subsequently
+loaded and integrity-validated through `DataPlane` before projection.
+
+The in-process, typed `PlatformApi` is the single application boundary. Its
+four explicit Commands publish finalized durable facts before returning normal
+success. Its seven explicit Queries provide bounded discovery, detail, and
+canonical-chain projections. Boundary audit events are operational logs with
+request/caller correlation, safe identities, outcome, and safe error codes;
+they are neither persisted semantic facts nor Raw Evidence.
+
+Artifact and Raw Evidence bytes, provider logs, and complete Dataset payloads
+are excluded. Inline Analysis content is currently allowed only for
+`execution-core-analysis-result/0.1.0`, whose structure is explicitly bounded.
+Other result contracts remain schema/digest references until separately
+reviewed. Phase 07 introduces no network transport or serialized public schema.
+Future Visual Analytics and MCP adapters must consume `PlatformApi`; they must
+not access Data Plane, SQLite, providers, transformers, or Analysis internals.

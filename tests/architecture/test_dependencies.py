@@ -237,6 +237,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         forbidden_stems = {
             "api",
             "analytics_engine",
+            "command_bus",
             "dataset_registry",
             "etl",
             "mcp",
@@ -245,6 +246,8 @@ class DependencyBoundaryTests(unittest.TestCase):
             "persistence",
             "process_runner",
             "provider_registry",
+            "query_bus",
+            "query_repository",
             "repository",
             "ranking",
             "semantic_layer",
@@ -427,7 +430,212 @@ class DependencyBoundaryTests(unittest.TestCase):
             for module, _ in _imports(path):
                 if module.split(".", 1)[0] == "sqlite3":
                     users.add(path.relative_to(PACKAGE_ROOT).as_posix())
-        self.assertEqual(users, {"infrastructure/sqlite_data_plane.py"})
+        self.assertEqual(
+            users,
+            {
+                "infrastructure/sqlite_data_plane.py",
+                "infrastructure/sqlite_research_query.py",
+            },
+        )
+
+    def test_research_query_boundary_is_narrow_and_storage_neutral(self) -> None:
+        path = PACKAGE_ROOT / "application/research_query.py"
+        text = path.read_text(encoding="utf-8")
+        source = text.lower()
+        forbidden = (
+            "sqlite",
+            "select ",
+            "offset",
+            "rowid",
+            "table",
+            "column",
+            "repository",
+            "latest",
+            "count",
+        )
+        self.assertEqual([term for term in forbidden if term in source], [])
+        tree = ast.parse(text, filename=str(path))
+        port = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "ResearchQueryPort"
+        )
+        methods = {
+            node.name for node in port.body if isinstance(node, ast.FunctionDef)
+        }
+        self.assertEqual(
+            methods,
+            {
+                "list_research_runs",
+                "list_run_datasets",
+                "list_dataset_analyses",
+            },
+        )
+
+    def test_m1_semantics_and_composition_do_not_leak_adapters(self) -> None:
+        semantic = (PACKAGE_ROOT / "domain/semantic.py").read_text(
+            encoding="utf-8"
+        ).lower()
+        forbidden = (
+            "sqlite",
+            "metaeditor",
+            "metatrader",
+            "mt5",
+            "repository",
+            "strategy",
+            "signal",
+            "indicator",
+            "entry",
+            "exit",
+            "position",
+            "thesis",
+        )
+        self.assertEqual([term for term in forbidden if term in semantic], [])
+
+        composition = PACKAGE_ROOT / "application/platform_queries.py"
+        imports = {module for module, _ in _imports(composition)}
+        self.assertFalse(
+            any(
+                module.startswith("ea_research_lab.infrastructure")
+                for module in imports
+            )
+        )
+        self.assertTrue((PACKAGE_ROOT / "application/platform_api.py").exists())
+        self.assertTrue((PACKAGE_ROOT / "application/platform_commands.py").exists())
+        sqlite_data_plane = (
+            PACKAGE_ROOT / "infrastructure/sqlite_data_plane.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("domain.semantic", sqlite_data_plane)
+        self.assertNotIn("semantic-projection", sqlite_data_plane)
+
+    def test_platform_commands_are_explicit_and_transport_neutral(self) -> None:
+        path = PACKAGE_ROOT / "application/platform_commands.py"
+        text = path.read_text(encoding="utf-8")
+        tree = ast.parse(text, filename=str(path))
+        service = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "PlatformCommands"
+        )
+        public_methods = {
+            node.name
+            for node in service.body
+            if isinstance(node, ast.FunctionDef) and not node.name.startswith("_")
+        }
+        self.assertEqual(
+            public_methods,
+            {
+                "build_artifact",
+                "execute_run",
+                "transform_evidence",
+                "analyze_datasets",
+            },
+        )
+        imports = {module for module, _ in _imports(path)}
+        self.assertFalse(
+            any(module.startswith("ea_research_lab.infrastructure") for module in imports)
+        )
+        forbidden_imports = {
+            "http",
+            "socket",
+            "sqlite3",
+            "subprocess",
+            "urllib",
+        }
+        self.assertEqual(
+            {module.split(".", 1)[0] for module in imports} & forbidden_imports,
+            set(),
+        )
+        class_names = {
+            node.name.lower()
+            for node in tree.body
+            if isinstance(node, ast.ClassDef)
+        }
+        self.assertTrue(
+            class_names.isdisjoint(
+                {
+                    "commandbus",
+                    "commandhandler",
+                    "commandregistry",
+                    "dispatcher",
+                    "mediator",
+                }
+            )
+        )
+        self.assertTrue((PACKAGE_ROOT / "application/platform_api.py").exists())
+
+    def test_platform_queries_and_api_have_exact_surfaces(self) -> None:
+        query_path = PACKAGE_ROOT / "application/platform_queries.py"
+        query_tree = ast.parse(
+            query_path.read_text(encoding="utf-8"), filename=str(query_path)
+        )
+        queries = next(
+            node
+            for node in query_tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "PlatformQueries"
+        )
+        query_methods = {
+            node.name
+            for node in queries.body
+            if isinstance(node, ast.FunctionDef) and not node.name.startswith("_")
+        }
+        expected_queries = {
+            "list_research_runs",
+            "get_research_run",
+            "list_run_datasets",
+            "get_dataset",
+            "list_dataset_analyses",
+            "get_analysis",
+            "get_canonical_chain",
+        }
+        self.assertEqual(query_methods, expected_queries)
+
+        api_path = PACKAGE_ROOT / "application/platform_api.py"
+        api_text = api_path.read_text(encoding="utf-8")
+        api_tree = ast.parse(api_text, filename=str(api_path))
+        api = next(
+            node
+            for node in api_tree.body
+            if isinstance(node, ast.ClassDef) and node.name == "PlatformApi"
+        )
+        api_methods = {
+            node.name
+            for node in api.body
+            if isinstance(node, ast.FunctionDef) and not node.name.startswith("_")
+        }
+        self.assertEqual(
+            api_methods,
+            expected_queries
+            | {
+                "build_artifact",
+                "execute_run",
+                "transform_evidence",
+                "analyze_datasets",
+            },
+        )
+        for path in (query_path, api_path):
+            imports = {module for module, _ in _imports(path)}
+            self.assertFalse(
+                any(
+                    module.startswith("ea_research_lab.infrastructure")
+                    for module in imports
+                )
+            )
+        forbidden = (
+            "sqlite3",
+            "commandbus",
+            "querybus",
+            "dispatch(",
+            "invoke(",
+            "http",
+            "graphql",
+            "grpc",
+            "socket",
+        )
+        combined = (
+            query_path.read_text(encoding="utf-8") + api_text
+        ).lower()
+        self.assertEqual([term for term in forbidden if term in combined], [])
 
     def test_build_workflow_does_not_introduce_future_capabilities(self) -> None:
         source = (PACKAGE_ROOT / "application/build.py").read_text(

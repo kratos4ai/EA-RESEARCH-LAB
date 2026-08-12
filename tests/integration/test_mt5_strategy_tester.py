@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import subprocess
 import tempfile
@@ -23,25 +24,29 @@ from ea_research_lab.application.build import (
     execute_build,
 )
 from ea_research_lab.application.context import RequestContext
-from ea_research_lab.application.data_plane import (
-    CanonicalChainRequest,
-    DurableBuild,
-    DurableRun,
-    reconstruct_canonical_chain,
-)
 from ea_research_lab.application.dataset import (
     TransformationRequest,
     transform_dataset,
 )
 from ea_research_lab.application.execution import ExecutionRequest, execute_run
 from ea_research_lab.application.identity import new_entity_id
+from ea_research_lab.application.platform_api import PlatformApi
+from ea_research_lab.application.platform_commands import (
+    AnalyzeDatasetsCommandRequest,
+    DatasetInputReference,
+    ExecuteRunCommandRequest,
+    PlatformCommands,
+    TransformEvidenceCommandRequest,
+    TransformationDefinition,
+)
+from ea_research_lab.application.platform_queries import PlatformQueries
+from ea_research_lab.application.research_query import PageRequest
 from ea_research_lab.contracts import validate_document
 from ea_research_lab.domain.build import AcceptedArtifact, BuildInputScope, BuildOutcome
 from ea_research_lab.domain.evidence import EvidenceCollectionOutcome
 from ea_research_lab.domain.execution import ExecutionProviderVerdict
 from ea_research_lab.domain.identifiers import (
     AnalysisDefinitionId,
-    AnalysisResultId,
     ArtifactId,
     BuildRecordId,
     EnvironmentConfigurationId,
@@ -81,6 +86,7 @@ from ea_research_lab.infrastructure.mt5_strategy_tester import (
     Mt5StrategyTesterProvider,
 )
 from ea_research_lab.infrastructure.sqlite_data_plane import SqliteDataPlane
+from ea_research_lab.infrastructure.sqlite_research_query import SqliteResearchQuery
 
 
 _TERMINAL = os.environ.get("EA_RESEARCH_LAB_MT5_TERMINAL")
@@ -424,7 +430,7 @@ class Mt5StrategyTesterIntegrationTests(unittest.TestCase):
     and os.environ.get("EA_RESEARCH_LAB_METAEDITOR_INTEGRATION") == "1",
     "controlled Phase 05 MT5 integration is not enabled",
 )
-class Phase06PersistedMt5IntegrationTests(unittest.TestCase):
+class PlatformApiMt5IntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         if os.environ.get("EA_RESEARCH_LAB_MT5_CONTROLLED_ACTIVITY_FIXTURE") != "1":
@@ -479,15 +485,24 @@ class Phase06PersistedMt5IntegrationTests(unittest.TestCase):
             if os.environ.get(key)
         }
 
-    def test_known_activity_vertical_survives_persistence_and_reload(self) -> None:
+    def test_platform_api_vertical_survives_restart(self) -> None:
         environment = self._environment()
         metaeditor_configuration = MetaEditorConfiguration(
             self.metaeditor,
             Sha256Digest(hashlib.sha256(self.metaeditor.read_bytes()).hexdigest()),
             environment,
         )
+        terminal_configuration = Mt5StrategyTesterConfiguration(
+            self.terminal,
+            Sha256Digest(hashlib.sha256(self.terminal.read_bytes()).hexdigest()),
+            self.data_root,
+            environment,
+            "main",
+            "demo",
+        )
+        context = RequestContext(new_entity_id(RequestId), "phase07-platform")
         build_request = BuildRequest(
-            RequestContext(new_entity_id(RequestId), "phase05-mt5-build"),
+            context,
             new_entity_id(BuildRecordId),
             SourceRevision(
                 "git", "ea-research-lab", "phase05-known-activity", True
@@ -503,30 +518,6 @@ class Phase06PersistedMt5IntegrationTests(unittest.TestCase):
             metaeditor_configuration.payload,
             timedelta(seconds=30),
         )
-        with tempfile.TemporaryDirectory(prefix="earl-phase05-integration-") as name:
-            build = execute_build(
-                build_request,
-                lambda active: execute_metaeditor_build_attempt(
-                    active,
-                    configuration=metaeditor_configuration,
-                    workspace_parent=Path(name),
-                    logical_name="phase05-known-activity",
-                    artifact_version="integration-1",
-                    built_at=UtcTimestamp(datetime.now(UTC)),
-                ),
-            )
-        self.assertIs(build.outcome, BuildOutcome.SUCCEEDED)
-        self.assertIsNotNone(build.artifact_acceptance)
-        artifact = build.artifact_acceptance.artifact
-
-        terminal_configuration = Mt5StrategyTesterConfiguration(
-            self.terminal,
-            Sha256Digest(hashlib.sha256(self.terminal.read_bytes()).hexdigest()),
-            self.data_root,
-            environment,
-            "main",
-            "demo",
-        )
         execution = {
             "schema_name": "mt5-strategy-tester-execution",
             "schema_version": "0.1.0",
@@ -541,262 +532,260 @@ class Phase06PersistedMt5IntegrationTests(unittest.TestCase):
             "currency": "USD",
             "leverage": "1:100",
         }
-        definition = SchemaReferencedPayload(
-            _ref("test-definition"),
-            {
-                "schema_name": "test-definition",
-                "schema_version": "0.1.0",
-                "test_definition_id": str(new_entity_id(TestDefinitionId)),
-                "test_definition_revision_id": str(
-                    new_entity_id(TestDefinitionRevisionId)
-                ),
-                "artifact_id": str(artifact.artifact_id),
-                "execution_configuration": {
-                    "schema_ref": str(_ref("mt5-strategy-tester-execution")),
-                    "value": execution,
-                },
-                "sut_inputs": {
-                    "schema_ref": (
-                        "urn:ea-research-lab:schema:controlled-empty-inputs:0.1.0"
-                    ),
-                    "value": {},
-                },
-            },
-        )
-        execution_request = ExecutionRequest(
-            RequestContext(new_entity_id(RequestId), "phase05-mt5-run"),
-            new_entity_id(RunId),
-            artifact,
-            definition,
-            new_entity_id(EnvironmentConfigurationId),
-            terminal_configuration.payload,
-            timedelta(seconds=90),
-        )
-        run = execute_run(
-            Mt5StrategyTesterProvider(terminal_configuration),
-            execution_request,
-            ReproducibilityAssessment(
-                ReproducibilityLevel.BEST_EFFORT,
-                (
-                    ReproducibilityReason(
-                        "provider_replay_not_guaranteed",
-                        "The external provider does not guarantee bitwise replay.",
-                    ),
-                ),
-            ),
-        )
-        self.assertIsNone(run.failure)
-        self.assertEqual(run.run_manifest.value["status"], "completed")
-        self.assertIs(
-            run.evidence_manifest.outcome, EvidenceCollectionOutcome.COMPLETED
-        )
-        evidence = EvidenceProvenance(
-            run.evidence_manifest, run.evidence_manifest_ref
-        )
-        summary_outcome = transform_dataset(
-            Mt5ReportTransformer(),
-            TransformationRequest(
-                execution_request.context,
-                evidence,
-                run.raw_evidence,
-                new_entity_id(TransformationId),
-                DefinitionVersion("mt5-execution-summary-1"),
-            ),
-        )
-        realized_outcome = transform_dataset(
-            Mt5RealizedExecutionEventSeriesTransformer(),
-            TransformationRequest(
-                execution_request.context,
-                evidence,
-                run.raw_evidence,
-                new_entity_id(TransformationId),
-                DefinitionVersion("mt5-realized-execution-event-series-1"),
-            ),
-        )
-        balances_outcome = transform_dataset(
-            Mt5AccountBalanceEventSeriesTransformer(),
-            TransformationRequest(
-                execution_request.context,
-                evidence,
-                run.raw_evidence,
-                new_entity_id(TransformationId),
-                DefinitionVersion("mt5-account-balance-event-series-1"),
-            ),
-        )
-        self.assertIsNone(
-            summary_outcome.failure,
-            repr(summary_outcome.failure.cause)
-            if summary_outcome.failure
-            else None,
-        )
-        self.assertIsNone(
-            realized_outcome.failure,
-            repr(realized_outcome.failure.cause)
-            if realized_outcome.failure
-            else None,
-        )
-        self.assertIsNone(
-            balances_outcome.failure,
-            repr(balances_outcome.failure.cause)
-            if balances_outcome.failure
-            else None,
-        )
-        summary = summary_outcome.dataset
-        realized = realized_outcome.dataset
-        balances = balances_outcome.dataset
+        records = []
 
-        self.assertEqual(
-            [event["realized_pnl"] for event in realized.content.payload.value["events"]],
-            ["-0.04", "0.42"],
-        )
-        self.assertEqual(
-            [
-                observation["balance"]
-                for observation in balances.content.payload.value["observations"]
-            ],
-            ["10000.00", "10000.00", "9999.96", "9999.96", "10000.38"],
-        )
-        for dataset in (summary, realized, balances):
-            validate_document(_plain(dataset.content.payload.value))
-            validate_document(_plain(dataset.manifest.value))
-            self.assertEqual(
-                dataset.provenance.input_manifests,
-                (run.evidence_manifest_ref,),
+        class Capture(logging.Handler):
+            def emit(self, record) -> None:
+                records.append(record)
+
+        logger = logging.Logger("phase07-platform-integration")
+        logger.setLevel(logging.INFO)
+        logger.addHandler(Capture())
+
+        def transform_workflow(active_context, evidence, definitions):
+            transformers = (
+                Mt5ReportTransformer(),
+                Mt5RealizedExecutionEventSeriesTransformer(),
+                Mt5AccountBalanceEventSeriesTransformer(),
+            )
+            return tuple(
+                transform_dataset(
+                    transformer,
+                    TransformationRequest(
+                        active_context,
+                        EvidenceProvenance(
+                            evidence.manifest, evidence.reference
+                        ),
+                        evidence.raw_evidence,
+                        definition.transformation_id,
+                        definition.version,
+                        definition.parameters,
+                    ),
+                )
+                for transformer, definition in zip(
+                    transformers, definitions, strict=True
+                )
             )
 
-        analysis = analyze_execution_core(
-            AnalysisRequest(
-                execution_request.context,
-                (summary, realized, balances),
-                new_entity_id(AnalysisDefinitionId),
-                DefinitionVersion("execution-core-analysis-1"),
-                SchemaReferencedPayload(
-                    _ref("execution-core-analysis-parameters"),
-                    {
-                        "schema_name": "execution-core-analysis-parameters",
-                        "schema_version": "0.1.0",
-                    },
-                ),
-                new_entity_id(EnvironmentConfigurationId),
-            )
-        )
-        self.assertIsNone(
-            analysis.failure,
-            repr(analysis.failure.cause) if analysis.failure else None,
-        )
-        result = analysis.result
-        self.assertIsNotNone(result)
-        content = result.content.payload.value
-        self.assertEqual(
-            content["aggregate_metrics"],
-            {
-                "net_return": {"value": "0.000038000000"},
-                "win_rate": {"value": "0.500000000000"},
-                "loss_rate": {"value": "0.500000000000"},
-                "expected_payoff": {"value": "0.190000000000"},
-                "profit_factor": {"value": "10.500000000000"},
-                "average_winning_result": {"value": "0.420000000000"},
-                "average_losing_magnitude": {"value": "0.040000000000"},
-                "payoff_ratio": {"value": "10.500000000000"},
-                "gross_profit_return": {"value": "0.000042000000"},
-                "gross_loss_return": {"value": "0.000004000000"},
-            },
-        )
-        self.assertEqual(
-            content["realized_execution_distribution"],
-            {
-                "count": 2,
-                "minimum": {"value": "-0.040000000000"},
-                "maximum": {"value": "0.420000000000"},
-                "arithmetic_mean": {"value": "0.190000000000"},
-                "median": {"value": "0.190000000000"},
-                "mean_absolute_deviation": {"value": "0.230000000000"},
-            },
-        )
-        self.assertEqual(
-            content["realized_execution_sequence"],
-            {
-                "longest_positive_streak": 1,
-                "longest_negative_streak": 1,
-                "zero_result_count": 0,
-            },
-        )
-        self.assertEqual(
-            content["event_balance_analysis"]["event_balance_max_drawdown"],
-            {
-                "amount": {"value": "0.040000000000"},
-                "rate": {"value": "0.000004000000"},
-            },
-        )
-        self.assertEqual(
-            content["input_content_digests"],
-            {
-                "execution_summary": str(summary.content.content_digest),
-                "realized_execution_event_series": str(
-                    realized.content.content_digest
-                ),
-                "account_balance_event_series": str(
-                    balances.content.content_digest
-                ),
-            },
-        )
-        validate_document(_plain(content))
-        validate_document(_plain(result.envelope.value))
-        expected = {
-            "build_id": str(build.build_record.value["build_record_id"]),
-            "run_id": str(run.run_manifest.value["run_id"]),
-            "analysis_id": str(result.provenance.analysis_result_id),
-            "artifact_bytes": artifact.content,
-            "artifact_digest": str(artifact.binary_digest),
-            "evidence": tuple(
-                (
-                    item.content,
-                    str(item.evidence_object.content_digest),
-                )
-                for item in run.raw_evidence
-            ),
-            "manifest_ref": (
-                str(run.evidence_manifest_ref.manifest_id),
-                str(run.evidence_manifest_ref.run_id),
-                str(run.evidence_manifest_ref.content_digest),
-            ),
-            "dataset_ids": frozenset(
-                str(dataset.provenance.dataset_id)
-                for dataset in (summary, realized, balances)
-            ),
-            "datasets": frozenset(
-                (
-                    dataset.content.canonical_bytes,
-                    str(dataset.content.content_digest),
-                )
-                for dataset in (summary, realized, balances)
-            ),
-            "analysis_bytes": result.content.canonical_bytes,
-            "analysis_digest": str(result.content.content_digest),
-        }
         with tempfile.TemporaryDirectory(
-            prefix="earl-phase06-data-plane-"
-        ) as data_name:
-            database = Path(data_name) / "lab.sqlite3"
-            with SqliteDataPlane(database) as data_plane:
-                data_plane.publish_build(DurableBuild.from_workflow_result(build))
-                data_plane.publish_run(
-                    DurableRun.from_execution_result(definition, run)
+            prefix="earl-phase07-platform-"
+        ) as name:
+            root = Path(name)
+            workspace = root / "builds"
+            workspace.mkdir()
+            database = root / "lab.sqlite3"
+
+            def build_workflow(active_request):
+                return execute_build(
+                    active_request,
+                    lambda active: execute_metaeditor_build_attempt(
+                        active,
+                        configuration=metaeditor_configuration,
+                        workspace_parent=workspace,
+                        logical_name="phase05-known-activity",
+                        artifact_version="integration-1",
+                        built_at=UtcTimestamp(datetime.now(UTC)),
+                    ),
                 )
-                for dataset in (summary, realized, balances):
-                    data_plane.publish_dataset(dataset)
-                data_plane.publish_analysis(result)
 
-            del build, artifact, run, evidence, summary, realized, balances
-            del analysis, result, content, definition, execution_request
-            del summary_outcome, realized_outcome, balances_outcome
-            del build_request, terminal_configuration, metaeditor_configuration
+            def run_workflow(active_request, reproducibility):
+                return execute_run(
+                    Mt5StrategyTesterProvider(terminal_configuration),
+                    active_request,
+                    reproducibility,
+                )
 
-            roots = CanonicalChainRequest(
-                BuildRecordId.parse(expected["build_id"]),
-                RunId.parse(expected["run_id"]),
-                AnalysisResultId.parse(expected["analysis_id"]),
-            )
+            with (
+                SqliteDataPlane(database) as data_plane,
+                SqliteResearchQuery(database) as discovery,
+            ):
+                commands = PlatformCommands(
+                    data_plane,
+                    build_workflow,
+                    run_workflow,
+                    transform_workflow,
+                    analyze_execution_core,
+                    logger,
+                )
+                api = PlatformApi(
+                    commands,
+                    PlatformQueries(data_plane, discovery),
+                    logger,
+                )
+
+                built = api.build_artifact(build_request)
+                self.assertTrue(built.published)
+                self.assertIsNone(built.failure)
+                self.assertIs(built.outcome, BuildOutcome.SUCCEEDED)
+                self.assertIsNotNone(built.artifact_id)
+
+                definition = SchemaReferencedPayload(
+                    _ref("test-definition"),
+                    {
+                        "schema_name": "test-definition",
+                        "schema_version": "0.1.0",
+                        "test_definition_id": str(
+                            new_entity_id(TestDefinitionId)
+                        ),
+                        "test_definition_revision_id": str(
+                            new_entity_id(TestDefinitionRevisionId)
+                        ),
+                        "artifact_id": str(built.artifact_id),
+                        "execution_configuration": {
+                            "schema_ref": str(
+                                _ref("mt5-strategy-tester-execution")
+                            ),
+                            "value": execution,
+                        },
+                        "sut_inputs": {
+                            "schema_ref": (
+                                "urn:ea-research-lab:schema:"
+                                "controlled-empty-inputs:0.1.0"
+                            ),
+                            "value": {},
+                        },
+                    },
+                )
+                run = api.execute_run(
+                    ExecuteRunCommandRequest(
+                        context,
+                        new_entity_id(RunId),
+                        built.build_record_id,
+                        built.artifact_id,
+                        definition,
+                        new_entity_id(EnvironmentConfigurationId),
+                        terminal_configuration.payload,
+                        timedelta(seconds=90),
+                        ReproducibilityAssessment(
+                            ReproducibilityLevel.BEST_EFFORT,
+                            (
+                                ReproducibilityReason(
+                                    "provider_replay_not_guaranteed",
+                                    "The external provider does not guarantee "
+                                    "bitwise replay.",
+                                ),
+                            ),
+                        ),
+                    )
+                )
+                self.assertTrue(run.published)
+                self.assertIsNone(run.failure)
+                self.assertEqual(run.status, "completed")
+                self.assertIs(
+                    run.evidence_outcome, EvidenceCollectionOutcome.COMPLETED
+                )
+
+                transformed = api.transform_evidence(
+                    TransformEvidenceCommandRequest(
+                        context,
+                        run.run_id,
+                        run.evidence_manifest,
+                        tuple(
+                            TransformationDefinition(
+                                new_entity_id(TransformationId),
+                                DefinitionVersion(version),
+                            )
+                            for version in (
+                                "mt5-execution-summary-1",
+                                "mt5-realized-execution-event-series-1",
+                                "mt5-account-balance-event-series-1",
+                            )
+                        ),
+                    )
+                )
+                self.assertIsNone(transformed.failure)
+                self.assertEqual(len(transformed.datasets), 3)
+                self.assertTrue(
+                    all(item.published for item in transformed.datasets)
+                )
+
+                analyzed = api.analyze_datasets(
+                    AnalyzeDatasetsCommandRequest(
+                        context,
+                        tuple(
+                            DatasetInputReference(
+                                item.dataset_id, item.content_digest
+                            )
+                            for item in transformed.datasets
+                        ),
+                        new_entity_id(AnalysisDefinitionId),
+                        DefinitionVersion("execution-core-analysis-1"),
+                        SchemaReferencedPayload(
+                            _ref("execution-core-analysis-parameters"),
+                            {
+                                "schema_name": (
+                                    "execution-core-analysis-parameters"
+                                ),
+                                "schema_version": "0.1.0",
+                            },
+                        ),
+                        new_entity_id(EnvironmentConfigurationId),
+                    )
+                )
+                self.assertTrue(analyzed.published)
+                self.assertIsNone(analyzed.failure)
+
+                runs = api.list_research_runs(context, PageRequest(10))
+                run_detail = api.get_research_run(context, run.run_id)
+                datasets = api.list_run_datasets(
+                    context, run.run_id, PageRequest(10)
+                )
+                dataset_detail = api.get_dataset(
+                    context, transformed.datasets[0].dataset_id
+                )
+                analyses = api.list_dataset_analyses(
+                    context, transformed.datasets[0].dataset_id, PageRequest(10)
+                )
+                analysis_detail = api.get_analysis(
+                    context, analyzed.analysis_result_id
+                )
+                chain = api.get_canonical_chain(
+                    context,
+                    built.build_record_id,
+                    run.run_id,
+                    analyzed.analysis_result_id,
+                )
+
+                self.assertEqual(tuple(item.run_id for item in runs.items), (run.run_id,))
+                self.assertEqual(run_detail.summary.run_id, run.run_id)
+                self.assertEqual(
+                    {item.dataset_id for item in datasets.items},
+                    {item.dataset_id for item in transformed.datasets},
+                )
+                self.assertEqual(
+                    dataset_detail.summary.dataset_id,
+                    transformed.datasets[0].dataset_id,
+                )
+                self.assertEqual(
+                    tuple(item.analysis_result_id for item in analyses.items),
+                    (analyzed.analysis_result_id,),
+                )
+                self.assertIsNotNone(analysis_detail.bounded_result)
+                self.assertEqual(
+                    analysis_detail.bounded_result.schema_ref,
+                    _ref("execution-core-analysis-result"),
+                )
+                self.assertEqual(chain.provenance.run_id, run.run_id)
+                self.assertEqual(len(chain.datasets), 3)
+
+                expected = (
+                    built.build_record_id,
+                    run.run_id,
+                    analyzed.analysis_result_id,
+                    tuple(item.dataset_id for item in transformed.datasets),
+                    run.evidence_manifest,
+                )
+
+            del api, commands, built, run, transformed, analyzed
+            del runs, run_detail, datasets, dataset_detail, analyses
+            del analysis_detail, chain, definition
+            del data_plane, discovery, build_workflow, run_workflow
+            del transform_workflow, metaeditor_configuration
+            del terminal_configuration, build_request, execution
+
+            def must_not_run(*args, **kwargs):
+                raise AssertionError("Research computation must not rerun.")
+
             with (
                 patch(
                     "ea_research_lab.application.build.execute_build",
@@ -811,65 +800,101 @@ class Phase06PersistedMt5IntegrationTests(unittest.TestCase):
                     side_effect=AssertionError("Transformation must not rerun."),
                 ),
                 patch(
-                    "ea_research_lab.application.analysis.analyze_execution_summaries",
-                    side_effect=AssertionError("Analysis must not rerun."),
-                ),
-                patch(
                     "ea_research_lab.application.analysis.analyze_execution_core",
                     side_effect=AssertionError("Analysis must not rerun."),
                 ),
                 SqliteDataPlane(database) as fresh_data_plane,
+                SqliteResearchQuery(database) as fresh_discovery,
             ):
-                chain = reconstruct_canonical_chain(fresh_data_plane, roots)
+                fresh_commands = PlatformCommands(
+                    fresh_data_plane,
+                    must_not_run,
+                    must_not_run,
+                    must_not_run,
+                    must_not_run,
+                    logger,
+                )
+                fresh_api = PlatformApi(
+                    fresh_commands,
+                    PlatformQueries(fresh_data_plane, fresh_discovery),
+                    logger,
+                )
+                fresh_runs = fresh_api.list_research_runs(
+                    context, PageRequest(10)
+                )
+                fresh_run = fresh_api.get_research_run(context, expected[1])
+                fresh_datasets = fresh_api.list_run_datasets(
+                    context, expected[1], PageRequest(10)
+                )
+                fresh_dataset = fresh_api.get_dataset(
+                    context, expected[3][0]
+                )
+                fresh_analyses = fresh_api.list_dataset_analyses(
+                    context, expected[3][0], PageRequest(10)
+                )
+                fresh_analysis = fresh_api.get_analysis(context, expected[2])
+                fresh_chain = fresh_api.get_canonical_chain(
+                    context, expected[0], expected[1], expected[2]
+                )
 
-            loaded_artifact = chain.build.artifact_acceptance.artifact
-            self.assertEqual(loaded_artifact.content, expected["artifact_bytes"])
             self.assertEqual(
-                str(loaded_artifact.binary_digest), expected["artifact_digest"]
+                tuple(item.run_id for item in fresh_runs.items), (expected[1],)
             )
+            self.assertEqual(fresh_run.summary.run_id, expected[1])
+            self.assertEqual(
+                {item.dataset_id for item in fresh_datasets.items},
+                set(expected[3]),
+            )
+            self.assertEqual(fresh_dataset.summary.dataset_id, expected[3][0])
             self.assertEqual(
                 tuple(
-                    (
-                        item.content,
-                        str(item.evidence_object.content_digest),
-                    )
-                    for revision in chain.run.evidence_history
-                    for item in revision.raw_evidence
+                    item.analysis_result_id for item in fresh_analyses.items
                 ),
-                expected["evidence"],
+                (expected[2],),
             )
             self.assertEqual(
-                (
-                    str(chain.run.evidence_history[-1].reference.manifest_id),
-                    str(chain.run.evidence_history[-1].reference.run_id),
-                    str(chain.run.evidence_history[-1].reference.content_digest),
-                ),
-                expected["manifest_ref"],
+                fresh_analysis.summary.analysis_result_id, expected[2]
+            )
+            self.assertEqual(fresh_chain.provenance.build_record_id, expected[0])
+            self.assertEqual(fresh_chain.provenance.run_id, expected[1])
+            self.assertEqual(
+                fresh_chain.provenance.analysis_result_id, expected[2]
             )
             self.assertEqual(
-                {str(item.provenance.dataset_id) for item in chain.datasets},
-                expected["dataset_ids"],
+                fresh_chain.provenance.evidence_manifests[-1], expected[4]
             )
-            self.assertEqual(
-                {
-                    (
-                        item.content.canonical_bytes,
-                        str(item.content.content_digest),
-                    )
-                    for item in chain.datasets
-                },
-                expected["datasets"],
-            )
-            self.assertEqual(
-                chain.analysis.content.canonical_bytes,
-                expected["analysis_bytes"],
-            )
-            self.assertEqual(
-                str(chain.analysis.content.content_digest),
-                expected["analysis_digest"],
-            )
-        self.assertFalse(self._related_processes_present())
+            self.assertEqual(len(fresh_chain.datasets), 3)
+            self.assertFalse(hasattr(fresh_run, "raw_evidence"))
+            self.assertFalse(hasattr(fresh_dataset, "content"))
 
+        events = tuple(record.event_name for record in records)
+        for capability in (
+            "build_artifact",
+            "execute_run",
+            "transform_evidence",
+            "analyze_datasets",
+        ):
+            self.assertIn(f"platform.command.{capability}.completed", events)
+        for capability in (
+            "list_research_runs",
+            "get_research_run",
+            "list_run_datasets",
+            "get_dataset",
+            "list_dataset_analyses",
+            "get_analysis",
+            "get_canonical_chain",
+        ):
+            self.assertIn(f"platform.query.{capability}.completed", events)
+        logged = " ".join(str(record.__dict__) for record in records).lower()
+        for forbidden in (
+            "select ",
+            "sqlite3",
+            "metaeditor64.exe",
+            "terminal64.exe",
+            "strategy tester report",
+        ):
+            self.assertNotIn(forbidden, logged)
+        self.assertFalse(self._related_processes_present())
 
 if __name__ == "__main__":
     unittest.main()

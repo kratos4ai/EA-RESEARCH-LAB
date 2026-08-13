@@ -4,7 +4,15 @@ from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
 
 from ea_research_lab.domain.errors import InvalidValueError
-from ea_research_lab.domain.identifiers import AnalysisResultId, DatasetId, RunId
+from ea_research_lab.domain.identifiers import (
+    AnalysisResultId,
+    ArtifactId,
+    BuildRecordId,
+    DatasetId,
+    RawEvidenceManifestId,
+    RunId,
+)
+from ea_research_lab.domain.semantic import EvidenceObjectSummary
 
 
 DEFAULT_PAGE_LIMIT = 50
@@ -57,3 +65,14 @@ class ResearchQueryPort(Protocol):
     def list_dataset_analyses(
         self, dataset_id: DatasetId, page: PageRequest
     ) -> Page[AnalysisResultId]: ...
+
+    def list_run_evidence_objects(
+        self,
+        run_id: RunId,
+        manifest_id: RawEvidenceManifestId,
+        page: PageRequest,
+    ) -> Page[EvidenceObjectSummary]: ...
+
+    def find_build_record_for_artifact(
+        self, artifact_id: ArtifactId
+    ) -> BuildRecordId: ...

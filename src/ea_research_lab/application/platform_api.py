@@ -27,6 +27,7 @@ from ea_research_lab.domain.identifiers import (
     AnalysisResultId,
     BuildRecordId,
     DatasetId,
+    RawEvidenceManifestId,
     RunId,
 )
 from ea_research_lab.domain.semantic import (
@@ -35,6 +36,7 @@ from ea_research_lab.domain.semantic import (
     CanonicalChainProjection,
     DatasetDetail,
     DatasetSummary,
+    EvidenceObjectSummary,
     ResearchRunDetail,
     ResearchRunSummary,
 )
@@ -44,7 +46,7 @@ QueryResultT = TypeVar("QueryResultT")
 
 
 class PlatformApi:
-    """Eleven direct capabilities with no transport or provider selection."""
+    """Twelve direct capabilities with no transport or provider selection."""
 
     def __init__(
         self,
@@ -94,6 +96,22 @@ class PlatformApi:
             "get_research_run",
             context,
             lambda: self._queries.get_research_run(context, run_id),
+            run_id,
+        )
+
+    def list_run_evidence_objects(
+        self,
+        context: RequestContext,
+        run_id: RunId,
+        manifest_id: RawEvidenceManifestId,
+        page: PageRequest = PageRequest(),
+    ) -> Page[EvidenceObjectSummary]:
+        return self._query(
+            "list_run_evidence_objects",
+            context,
+            lambda: self._queries.list_run_evidence_objects(
+                context, run_id, manifest_id, page
+            ),
             run_id,
         )
 

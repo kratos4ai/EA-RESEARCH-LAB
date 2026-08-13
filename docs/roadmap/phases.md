@@ -48,7 +48,11 @@ declared speculatively.
 
 ## Phase 08 — Visual Analytics
 
-Build the research workbench over the Query capability of the Platform API and its semantic contracts.
+Build the local read-only research workbench over Platform API Queries and
+semantic contracts. The implementation through M4 provides Run discovery and
+Overview, Dataset/Analysis drill-down, bounded Evidence metadata,
+reproducibility, and verified provenance. RCP-001 closure validation is
+complete, and the phase is completed.
 
 ## Phase 09 — MCP Adapter
 

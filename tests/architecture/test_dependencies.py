@@ -286,7 +286,9 @@ class DependencyBoundaryTests(unittest.TestCase):
                 "artifact.py",
                 "build_workspace.py",
                 "metaeditor.py",
+                "metaeditor_semantic.py",
                 "mt5_report.py",
+                "mt5_semantic.py",
                 "mt5_strategy_tester.py",
                 "sqlite_data_plane.py",
             }:
@@ -469,6 +471,8 @@ class DependencyBoundaryTests(unittest.TestCase):
                 "list_research_runs",
                 "list_run_datasets",
                 "list_dataset_analyses",
+                "list_run_evidence_objects",
+                "find_build_record_for_artifact",
             },
         )
 
@@ -507,6 +511,56 @@ class DependencyBoundaryTests(unittest.TestCase):
         ).read_text(encoding="utf-8")
         self.assertNotIn("domain.semantic", sqlite_data_plane)
         self.assertNotIn("semantic-projection", sqlite_data_plane)
+        self.assertFalse((PACKAGE_ROOT / "visual").exists())
+        self.assertFalse((ROOT / "streamlit_app.py").exists())
+
+        public_queries = (
+            PACKAGE_ROOT / "application/platform_api.py"
+        ).read_text(encoding="utf-8").lower()
+        self.assertNotIn("dataset_content", public_queries)
+        self.assertNotIn("dataset_payload", public_queries)
+        self.assertNotIn("realized", composition.read_text(encoding="utf-8").lower())
+
+        semantic_tree = ast.parse(
+            (PACKAGE_ROOT / "domain/semantic.py").read_text(encoding="utf-8")
+        )
+        fields = {
+            node.name: {
+                item.target.id
+                for item in node.body
+                if isinstance(item, ast.AnnAssign)
+                and isinstance(item.target, ast.Name)
+            }
+            for node in semantic_tree.body
+            if isinstance(node, ast.ClassDef)
+            and node.name in {
+                "ExecutionSummaryProjection",
+                "ExperimentContextProjection",
+            }
+        }
+        self.assertEqual(
+            fields["ExecutionSummaryProjection"],
+            {
+                "total_trades",
+                "winning_trades",
+                "losing_trades",
+                "net_profit",
+                "currency",
+                "initial_deposit",
+            },
+        )
+        self.assertEqual(
+            fields["ExperimentContextProjection"],
+            {
+                "instrument",
+                "timeframe",
+                "start_date",
+                "end_date",
+                "requested_initial_capital",
+                "currency",
+                "leverage",
+            },
+        )
 
     def test_platform_commands_are_explicit_and_transport_neutral(self) -> None:
         path = PACKAGE_ROOT / "application/platform_commands.py"
@@ -582,6 +636,7 @@ class DependencyBoundaryTests(unittest.TestCase):
         expected_queries = {
             "list_research_runs",
             "get_research_run",
+            "list_run_evidence_objects",
             "list_run_datasets",
             "get_dataset",
             "list_dataset_analyses",
@@ -673,13 +728,17 @@ class DependencyBoundaryTests(unittest.TestCase):
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         self.assertEqual(
             project["project"]["dependencies"],
-            ["jsonschema[format]>=4.26,<5"],
+            ["jsonschema[format]>=4.26,<5", "streamlit==1.60.0"],
         )
 
         direct = self._requirement_lines(ROOT / "requirements.in")
         self.assertEqual(
             set(direct),
-            {"setuptools==84.0.0", "jsonschema[format]==4.26.0"},
+            {
+                "setuptools==84.0.0",
+                "jsonschema[format]==4.26.0",
+                "streamlit==1.60.0",
+            },
         )
 
         locked = self._requirement_lines(ROOT / "requirements.lock")
@@ -691,6 +750,55 @@ class DependencyBoundaryTests(unittest.TestCase):
                 self.assertRegex(requirement, rf"^{exact_requirement.pattern}$")
         self.assertIn("setuptools==84.0.0", locked)
         self.assertIn("jsonschema[format]==4.26.0", locked)
+        self.assertIn("streamlit==1.60.0", locked)
+
+    def test_visual_client_stays_outside_core_and_uses_only_platform_api(self) -> None:
+        visual = ROOT / "apps" / "visual_analytics"
+        self.assertFalse((PACKAGE_ROOT / "visual").exists())
+        self.assertEqual(
+            {path.name for path in visual.glob("*.py")},
+            {"app.py", "view_model.py"},
+        )
+        view_imports = {module for module, _ in _imports(visual / "view_model.py")}
+        self.assertFalse(
+            any(
+                module.startswith("ea_research_lab.infrastructure")
+                or module.startswith("ea_research_lab.application")
+                for module in view_imports
+            )
+        )
+        app_imports = {module for module, _ in _imports(visual / "app.py")}
+        infrastructure = {
+            module
+            for module in app_imports
+            if module.startswith("ea_research_lab.infrastructure")
+        }
+        self.assertEqual(
+            infrastructure, {"ea_research_lab.infrastructure.composition"}
+        )
+        source = "\n".join(
+            path.read_text(encoding="utf-8").lower()
+            for path in visual.glob("*.py")
+        )
+        for forbidden in (
+            "sqlite3",
+            "dataplane",
+            "researchqueryport",
+            "build_artifact(",
+            "execute_run(",
+            "transform_evidence(",
+            "analyze_datasets(",
+            "metaeditor",
+            "strategytester",
+            "buy signal",
+            "sell signal",
+            "strategy score",
+        ):
+            with self.subTest(term=forbidden):
+                self.assertNotIn(forbidden, source)
+        for forbidden in ("ema", "crossover"):
+            with self.subTest(term=forbidden):
+                self.assertIsNone(re.search(rf"\b{forbidden}\b", source))
 
     def _assert_imports(
         self,

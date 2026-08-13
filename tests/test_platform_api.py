@@ -114,6 +114,12 @@ class PlatformApiTests(unittest.TestCase):
 
                 runs = api.list_research_runs(context, PageRequest(1))
                 run_detail = api.get_research_run(context, run.run_id)
+                evidence = api.list_run_evidence_objects(
+                    context,
+                    run.run_id,
+                    run.evidence_manifest.manifest_id,
+                    PageRequest(1),
+                )
                 datasets = api.list_run_datasets(
                     context, run.run_id, PageRequest(3)
                 )
@@ -141,6 +147,8 @@ class PlatformApiTests(unittest.TestCase):
         self.assertTrue(analyzed.published)
         self.assertEqual(runs.items[0].run_id, run.run_id)
         self.assertEqual(run_detail.summary.run_id, run.run_id)
+        self.assertEqual(len(evidence.items), 1)
+        self.assertFalse(hasattr(evidence.items[0], "content"))
         self.assertEqual(len(datasets.items), 3)
         self.assertEqual(
             dataset_detail.summary.dataset_id, transformed.datasets[0].dataset_id
@@ -154,6 +162,7 @@ class PlatformApiTests(unittest.TestCase):
         self.assertIn("platform.query.get_canonical_chain.started", events)
         self.assertIn("platform.query.get_canonical_chain.completed", events)
         self.assertIn("platform.query.get_research_run.failed", events)
+        self.assertIn("platform.query.list_run_evidence_objects.completed", events)
         query_record = next(
             record
             for record in records.records

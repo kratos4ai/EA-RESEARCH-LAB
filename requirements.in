@@ -3,3 +3,6 @@ setuptools==84.0.0
 
 # JSON Schema Draft 2020-12 validation with format dependencies.
 jsonschema[format]==4.26.0
+
+# Local Visual Analytics client.
+streamlit==1.60.0

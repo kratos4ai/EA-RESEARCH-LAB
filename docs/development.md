@@ -4,7 +4,13 @@
 
 EA Research Lab requires Python `>=3.14,<3.15`. The M1 environment and dependency lock were verified with Python 3.14.7.
 
-The only functional third-party dependency remains `jsonschema[format]`. `setuptools` is used only as the package build backend. The Python standard library provides the test runner, local quality-check orchestration, filesystem isolation, hashing, and direct process invocation used by the Phase 02 build pipeline.
+The functional third-party dependencies are `jsonschema[format]` and the local
+Visual Analytics client dependency `streamlit==1.60.0`. `setuptools` is used
+only as the package build backend. Streamlit's transitive dependencies remain
+locked but are not separately selected as project capabilities. The Python
+standard library provides the test runner, local quality-check orchestration,
+filesystem isolation, hashing, and direct process invocation used by the Phase
+02 build pipeline.
 
 ## Environment setup
 
@@ -29,6 +35,35 @@ python -m pip install --no-build-isolation --no-deps --editable .
 ```
 
 If PowerShell script execution prevents activation, invoke `.venv\Scripts\python.exe` explicitly for each command instead of changing the machine execution policy.
+
+## Local Visual Analytics
+
+Launch the read-only Research workspace with an explicit existing database:
+
+```powershell
+python -m streamlit run apps/visual_analytics/app.py --server.address 127.0.0.1 -- --database '<path-to-lab.sqlite3>'
+```
+
+For controlled automation, `EA_RESEARCH_LAB_DATABASE` supplies the same
+explicit local path when `--database` is absent. The application does not
+discover databases and never defaults to RCP-001. It uses the read-only
+`PlatformApi` composition; there are no Build, Run, transformation, or Analysis
+controls. Streamlit session state retains only selected Run/Dataset/Analysis
+identities and keyset cursor state. Dataset and Evidence content are not
+exposed. The local server is a presentation transport for a trusted single-user
+workstation, not a public Platform API and not a supported remote deployment.
+
+Run the RCP-001 read-only Visual Analytics acceptance separately:
+
+```powershell
+python -m unittest discover -s tests/integration -p 'test_visual_analytics_rcp001.py' -v
+```
+
+This test hashes the canonical database, copies it to a disposable directory,
+drives the normal Streamlit application and Platform API read flow, verifies
+provider methods are not invoked, and confirms the canonical and copied files
+remain byte-identical. It does not rerun Build, MT5 execution, transformation,
+or Analysis.
 
 ## Local quality gate
 
@@ -130,7 +165,8 @@ transport-neutral Platform API. Its four Commands build, execute, transform,
 analyze, and publish through the existing application/Data Plane boundaries.
 Its seven Queries provide bounded Run, Dataset, Analysis, and canonical
 provenance projections after integrity-checked loads. SQLite remains behind the
-Data Plane and bounded discovery adapters. There is no network transport, UI,
+Data Plane and bounded discovery adapters. Phase 08 adds only the local,
+read-only Streamlit Research Overview client. There is no public Platform API,
 MCP, arbitrary search, or persisted semantic projection.
 
 Phase 04 report parsing is intentionally limited to the observed English

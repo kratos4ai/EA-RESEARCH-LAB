@@ -1,6 +1,8 @@
 """Immutable provider-neutral semantic query values."""
 
 from dataclasses import dataclass
+from datetime import date
+from decimal import Decimal
 
 from ea_research_lab.domain.evidence import (
     EvidenceCollectionOutcome,
@@ -14,6 +16,8 @@ from ea_research_lab.domain.identifiers import (
     BuildRecordId,
     DatasetId,
     EnvironmentConfigurationId,
+    RawEvidenceManifestId,
+    RawEvidenceObjectId,
     RunId,
     TestDefinitionId,
     TestDefinitionRevisionId,
@@ -126,30 +130,162 @@ class AnalysisSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class ExecutionSummaryProjection:
+    total_trades: int
+    winning_trades: int
+    losing_trades: int
+    net_profit: Decimal
+    currency: str
+    initial_deposit: Decimal
+
+    def __post_init__(self) -> None:
+        counts = (self.total_trades, self.winning_trades, self.losing_trades)
+        if (
+            any(type(value) is not int or value < 0 for value in counts)
+            or not isinstance(self.net_profit, Decimal)
+            or not self.net_profit.is_finite()
+            or not isinstance(self.initial_deposit, Decimal)
+            or not self.initial_deposit.is_finite()
+            or not isinstance(self.currency, str)
+            or len(self.currency) != 3
+            or not self.currency.isascii()
+            or not self.currency.isupper()
+        ):
+            raise InvalidValueError("Execution summary projection is invalid.")
+
+
+@dataclass(frozen=True, slots=True)
+class ExperimentContextProjection:
+    instrument: str
+    timeframe: str
+    start_date: date
+    end_date: date
+    requested_initial_capital: Decimal
+    currency: str
+    leverage: str
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.instrument, str)
+            or not self.instrument
+            or self.instrument.strip() != self.instrument
+            or not isinstance(self.timeframe, str)
+            or not self.timeframe
+            or self.timeframe.strip() != self.timeframe
+            or not isinstance(self.start_date, date)
+            or not isinstance(self.end_date, date)
+            or self.start_date >= self.end_date
+            or not isinstance(self.requested_initial_capital, Decimal)
+            or not self.requested_initial_capital.is_finite()
+            or self.requested_initial_capital <= 0
+            or not isinstance(self.currency, str)
+            or len(self.currency) != 3
+            or not self.currency.isascii()
+            or not self.currency.isupper()
+            or not isinstance(self.leverage, str)
+            or not self.leverage.startswith("1:")
+            or not self.leverage[2:].isdigit()
+            or int(self.leverage[2:]) <= 0
+        ):
+            raise InvalidValueError("Experiment context projection is invalid.")
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderRuntimeProjection:
+    role: str
+    provider_namespace: str
+    version: str | None
+    executable_digest: Sha256Digest | None
+
+    def __post_init__(self) -> None:
+        if (
+            self.role not in {"build", "execution"}
+            or not isinstance(self.provider_namespace, str)
+            or not self.provider_namespace
+            or (
+                self.version is not None
+                and (not isinstance(self.version, str) or not self.version)
+            )
+            or (
+                self.executable_digest is not None
+                and not isinstance(self.executable_digest, Sha256Digest)
+            )
+        ):
+            raise InvalidValueError("Provider runtime projection is invalid.")
+
+
+@dataclass(frozen=True, slots=True)
 class ResearchRunDetail:
     summary: ResearchRunSummary
+    build_record_id: BuildRecordId
     test_definition_id: TestDefinitionId
     environment_configuration_id: EnvironmentConfigurationId
     execution_reproducibility: ReproducibilityAssessment
     evidence_history: tuple[RawEvidenceManifestRef, ...]
+    experiment_context: ExperimentContextProjection | None = None
+    provider_runtimes: tuple[ProviderRuntimeProjection, ...] = ()
 
     def __post_init__(self) -> None:
         required = (
             (self.summary, ResearchRunSummary),
+            (self.build_record_id, BuildRecordId),
             (self.test_definition_id, TestDefinitionId),
             (self.environment_configuration_id, EnvironmentConfigurationId),
             (self.execution_reproducibility, ReproducibilityAssessment),
         )
         try:
             history = tuple(self.evidence_history)
+            runtimes = tuple(self.provider_runtimes)
         except TypeError as error:
             raise InvalidValueError("Research Run detail is invalid.") from error
         if any(not isinstance(value, expected) for value, expected in required) or (
             not history
             or any(not isinstance(item, RawEvidenceManifestRef) for item in history)
+            or (
+                self.experiment_context is not None
+                and not isinstance(
+                    self.experiment_context, ExperimentContextProjection
+                )
+            )
+            or any(not isinstance(item, ProviderRuntimeProjection) for item in runtimes)
         ):
             raise InvalidValueError("Research Run detail is invalid.")
         object.__setattr__(self, "evidence_history", history)
+        object.__setattr__(self, "provider_runtimes", runtimes)
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceObjectSummary:
+    manifest_id: RawEvidenceManifestId
+    object_id: RawEvidenceObjectId
+    media_type: str
+    byte_length: int
+    content_digest: Sha256Digest
+    payload_schema: SchemaRef | None = None
+    provider_namespace: str | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.manifest_id, RawEvidenceManifestId)
+            or not isinstance(self.object_id, RawEvidenceObjectId)
+            or not isinstance(self.media_type, str)
+            or not self.media_type
+            or type(self.byte_length) is not int
+            or self.byte_length < 0
+            or not isinstance(self.content_digest, Sha256Digest)
+            or (
+                self.payload_schema is not None
+                and not isinstance(self.payload_schema, SchemaRef)
+            )
+            or (
+                self.provider_namespace is not None
+                and (
+                    not isinstance(self.provider_namespace, str)
+                    or not self.provider_namespace
+                )
+            )
+        ):
+            raise InvalidValueError("Evidence Object summary is invalid.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +294,7 @@ class DatasetDetail:
     input_manifests: tuple[RawEvidenceManifestRef, ...]
     input_datasets: tuple[DatasetId, ...]
     transformation_parameters_schema: SchemaRef | None
+    execution_summary: ExecutionSummaryProjection | None = None
 
     def __post_init__(self) -> None:
         try:
@@ -173,6 +310,12 @@ class DatasetDetail:
             or (
                 self.transformation_parameters_schema is not None
                 and not isinstance(self.transformation_parameters_schema, SchemaRef)
+            )
+            or (
+                self.execution_summary is not None
+                and not isinstance(
+                    self.execution_summary, ExecutionSummaryProjection
+                )
             )
         ):
             raise InvalidValueError("Dataset detail is invalid.")
@@ -226,6 +369,7 @@ class AnalysisDetail:
 class ProvenanceSummary:
     build_record_id: BuildRecordId
     artifact_id: ArtifactId
+    artifact_digest: Sha256Digest
     test_definition_revision_id: TestDefinitionRevisionId
     run_id: RunId
     evidence_manifests: tuple[RawEvidenceManifestRef, ...]
@@ -236,6 +380,7 @@ class ProvenanceSummary:
         required = (
             (self.build_record_id, BuildRecordId),
             (self.artifact_id, ArtifactId),
+            (self.artifact_digest, Sha256Digest),
             (self.test_definition_revision_id, TestDefinitionRevisionId),
             (self.run_id, RunId),
             (self.analysis_result_id, AnalysisResultId),

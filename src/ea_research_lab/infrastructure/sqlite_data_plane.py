@@ -78,35 +78,49 @@ _ANALYSIS_RESULT_KIND = "analysis-result"
 class SqliteDataPlane:
     """One local SQLite connection; concurrent writers rely on SQLite locking."""
 
-    def __init__(self, database_path: Path) -> None:
+    def __init__(self, database_path: Path, *, read_only: bool = False) -> None:
         if not isinstance(database_path, Path):
             raise TypeError("SQLite Data Plane requires a Path.")
+        if type(read_only) is not bool:
+            raise TypeError("SQLite Data Plane read-only mode must be boolean.")
         connection: sqlite3.Connection | None = None
         try:
-            connection = sqlite3.connect(
-                database_path,
-                timeout=0,
-                isolation_level=None,
+            connection = (
+                sqlite3.connect(
+                    f"{database_path.resolve().as_uri()}?mode=ro",
+                    uri=True,
+                    timeout=0,
+                    isolation_level=None,
+                )
+                if read_only
+                else sqlite3.connect(
+                    database_path,
+                    timeout=0,
+                    isolation_level=None,
+                )
             )
             connection.execute("PRAGMA foreign_keys = ON")
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS content_objects (
-                    digest TEXT PRIMARY KEY,
-                    byte_length INTEGER NOT NULL CHECK (byte_length >= 0),
-                    content BLOB NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS published_records (
-                    record_kind TEXT NOT NULL,
-                    record_key TEXT NOT NULL,
-                    schema_ref TEXT NOT NULL,
-                    document_digest TEXT NOT NULL,
-                    PRIMARY KEY (record_kind, record_key),
-                    FOREIGN KEY (document_digest)
-                        REFERENCES content_objects(digest)
-                );
-                """
-            )
+            if read_only:
+                connection.execute("PRAGMA query_only = ON")
+            else:
+                connection.executescript(
+                    """
+                    CREATE TABLE IF NOT EXISTS content_objects (
+                        digest TEXT PRIMARY KEY,
+                        byte_length INTEGER NOT NULL CHECK (byte_length >= 0),
+                        content BLOB NOT NULL
+                    );
+                    CREATE TABLE IF NOT EXISTS published_records (
+                        record_kind TEXT NOT NULL,
+                        record_key TEXT NOT NULL,
+                        schema_ref TEXT NOT NULL,
+                        document_digest TEXT NOT NULL,
+                        PRIMARY KEY (record_kind, record_key),
+                        FOREIGN KEY (document_digest)
+                            REFERENCES content_objects(digest)
+                    );
+                    """
+                )
         except sqlite3.Error as error:
             if connection is not None:
                 connection.close()

@@ -25,7 +25,16 @@ def main() -> int:
         return 1
 
     commands = (
-        [sys.executable, "-m", "compileall", "-q", "src", "tests", "tools"],
+        [
+            sys.executable,
+            "-m",
+            "compileall",
+            "-q",
+            "src",
+            "apps",
+            "tests",
+            "tools",
+        ],
         [
             sys.executable,
             "-m",

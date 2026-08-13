@@ -1,0 +1,17 @@
+[mcp_servers.ea_research_lab]
+command = 'C:\Users\eng_d\AppData\Roaming\MetaQuotes\Terminal\9B101088254A9C260A9790D5079A7B11\MQL5\Experts\EA Research Lab\.venv\Scripts\python.exe'
+cwd = 'C:\Users\eng_d\AppData\Roaming\MetaQuotes\Terminal\9B101088254A9C260A9790D5079A7B11\MQL5\Experts\EA Research Lab'
+args = [
+  '-m', 'apps.mcp_adapter',
+  '--mode', 'command-capable',
+  '--database', 'C:\Users\eng_d\AppData\Roaming\MetaQuotes\Terminal\9B101088254A9C260A9790D5079A7B11\MQL5\Experts\EA Research Lab\data\lab.sqlite3',
+  '--build-workspace', 'C:\Users\eng_d\AppData\Local\EAResearchLab\build-workspaces',
+  '--artifact-logical-name', 'my-ea',
+  '--artifact-version', 'pilot-001',
+  '--metaeditor-executable', 'C:\Program Files\Ava Trade MT5 Terminal\MetaEditor64.exe',
+  '--metaeditor-digest', '50f47217c681e022924e905a2296144a7712dcf07f27bcfc108bf972aa20214c',
+  '--metaeditor-external-root', 'mql5-standard=C:\Users\eng_d\AppData\Roaming\MetaQuotes\Terminal\9B101088254A9C260A9790D5079A7B11\MQL5',
+  '--terminal-executable', 'C:\Program Files\Ava Trade MT5 Terminal\terminal64.exe',
+  '--terminal-digest', '3b8dfb92f9e1bb3f5950189e4fedfe4deb454d3ae054643b8a1ffacc9ae37df8',
+  '--mt5-data-root', 'C:\Users\eng_d\AppData\Roaming\MetaQuotes\Terminal\9B101088254A9C260A9790D5079A7B11'
+]

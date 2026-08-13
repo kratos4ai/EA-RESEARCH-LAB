@@ -728,7 +728,11 @@ class DependencyBoundaryTests(unittest.TestCase):
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         self.assertEqual(
             project["project"]["dependencies"],
-            ["jsonschema[format]>=4.26,<5", "streamlit==1.60.0"],
+            [
+                "jsonschema[format]>=4.26,<5",
+                "mcp==2.0.0",
+                "streamlit==1.60.0",
+            ],
         )
 
         direct = self._requirement_lines(ROOT / "requirements.in")
@@ -737,6 +741,7 @@ class DependencyBoundaryTests(unittest.TestCase):
             {
                 "setuptools==84.0.0",
                 "jsonschema[format]==4.26.0",
+                "mcp==2.0.0",
                 "streamlit==1.60.0",
             },
         )
@@ -750,6 +755,7 @@ class DependencyBoundaryTests(unittest.TestCase):
                 self.assertRegex(requirement, rf"^{exact_requirement.pattern}$")
         self.assertIn("setuptools==84.0.0", locked)
         self.assertIn("jsonschema[format]==4.26.0", locked)
+        self.assertIn("mcp==2.0.0", locked)
         self.assertIn("streamlit==1.60.0", locked)
 
     def test_visual_client_stays_outside_core_and_uses_only_platform_api(self) -> None:

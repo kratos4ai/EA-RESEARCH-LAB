@@ -6,3 +6,6 @@ jsonschema[format]==4.26.0
 
 # Local Visual Analytics client.
 streamlit==1.60.0
+
+# Official local MCP protocol adapter SDK.
+mcp==2.0.0

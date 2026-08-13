@@ -56,9 +56,11 @@ complete, and the phase is completed.
 
 ## Phase 09 — MCP Adapter
 
-Expose read-only semantic exploration to Codex/agents.
-
-Later add controlled command tools.
+Expose the existing Platform API to Codex/agents through a local tools-only
+stdio adapter. Implementation through M4 provides eight bounded Query Tools
+by default and four explicitly enabled Command Tools, with real Codex
+integration validated against a disposable RCP-001 copy. The phase is
+completed.
 
 ## Phase 10 — Advanced Research Analytics
 
